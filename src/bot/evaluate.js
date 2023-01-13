@@ -1,41 +1,49 @@
-/**
- * 策略: 所有 max 可能的次数 - min 可能的次数
- */
-
 import { max, min } from './const'
-import { colToRow } from './support'
+import { theModes } from './generateModes'
+import { theIndexArray } from './generateIndexArray'
 
-const sumMM = (arr) => {
-  let rst = {}
-  arr.forEach((m) => {
-    rst[m] = rst[m] + 1 || 1
-  })
-  return rst
+const dead2 = 2
+const dead3 = 5
+const dead4 = 10
+const live2 = 20
+const live3 = 100
+const live4 = 10000
+const final5 = Infinity
+const modeScores = {
+  dead2: dead2,
+  dead3: dead3,
+  dead4: dead4,
+  live2: live2,
+  live3: live3,
+  live4: live4,
+  final5: final5,
+  '-dead2': -dead2,
+  '-dead3': -dead3,
+  '-dead4': -dead4,
+  '-live2': -live2,
+  '-live3': -live3,
+  '-live4': -live4,
+  '-final5': -final5,
 }
-const score = (m) => {
-  if (m[max] === 3) return Infinity
-  else if (m[min] === 3) return -Infinity
-  else if (m[max] && !m[min]) return 1
-  else if (m[min] && !m[max]) return -1
-  return 0
-}
-const sum = (arr) => arr.reduce((a, b) => a + b, 0)
-const evaluate = (state) => {
-  let rst = 0
-  // 遍历行
-  rst += sum(state.map(sumMM).map(score))
-  // 遍历列
-  rst += sum(colToRow(state).map(sumMM).map(score))
-  // 对角线
-  rst += sum(
-    [
-      [state[0][0], state[1][1], state[2][2]],
-      [state[2][0], state[1][1], state[0][2]],
-    ]
-      .map(sumMM)
-      .map(score)
+const evaluate = (node) => {
+  // console.log({ node })
+  let modes = theIndexArray.map((x) =>
+    x.map((position) => node[position[0]][position[1]]).join('')
   )
+  modes = modes.map((x) => theModes[x])
+  console.log({ modes, theModes, theIndexArray })
+
+  let rst = 0
+  // 基础分数
+  modes.forEach((m) => {
+    if (m) {
+      // console.log(m, modeScores[m])
+      rst += modeScores[m]
+    }
+  })
+  // 双3
+  // 双4
   return rst
 }
 
-export { evaluate, colToRow }
+export { evaluate }

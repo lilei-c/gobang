@@ -14,14 +14,14 @@ function minimax(node, depth)
 
 heuristic adj.(教学或教育)启发式的
  */
-import { max, min } from './const'
-import { colToRow } from './support'
+import { blank, max, min } from './const'
 import { evaluate } from './evaluate.js'
+import { theIndexArray } from './generateIndexArray'
 
 const childs = (node) => {
   let rst = []
   for (let i in node)
-    for (let j in node[i]) if (node[i][j] === null) rst.push([i, j])
+    for (let j in node[i]) if (node[i][j] === blank) rst.push([i, j])
   return rst
 }
 
@@ -33,31 +33,19 @@ const childNode = (node, position, val) => {
 }
 
 const theWinner = (node) => {
-  // 行
-  for (const m of node)
-    if (m[0] !== null && m[0] === m[1] && m[0] == m[2]) return m[0]
-  // 列
-  for (const m of colToRow(node))
-    if (m[0] !== null && m[0] === m[1] && m[0] == m[2]) return m[0]
-  // 对角线
-  if (
-    node[0][0] !== null &&
-    node[0][0] === node[1][1] &&
-    node[0][0] === node[2][2]
+  const xx = theIndexArray.map((x) =>
+    x.map((position) => node[position[0]][position[1]] || '-').join('')
   )
-    return node[0][0]
-  if (
-    node[2][0] !== null &&
-    node[2][0] === node[1][1] &&
-    node[2][0] === node[0][2]
-  )
-    return node[2][0]
+  console.log(theIndexArray, xx)
+  if (xx.some((x) => RegExp(Array(5).fill(max).join('')).test(x))) return max
+  if (xx.some((x) => RegExp(Array(5).fill(min).join('')).test(x))) return min
   return null
 }
 
-const isBoardFull = (node) => !node.some((x) => x.some((m) => m === null))
+const isBoardFull = (node) => !node.some((x) => x.some((m) => m === blank))
 
-const isTerminalNode = (node) => theWinner(node) || isBoardFull(node)
+// const isTerminalNode = (node) => theWinner(node) || isBoardFull(node)
+const isTerminalNode = (node) => isBoardFull(node)
 
 const minimax = (
   node,
