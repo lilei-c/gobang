@@ -5,14 +5,13 @@
  * https://baijiahao.baidu.com/s?id=1716036313199600725&wfr=spider&for=pc
  */
 
-import { max, min } from './const.js'
+import { max, min, blank } from './const.js'
 
-const generateAllModes = (arr = [[]], deep = 5) => {
-  let rst = []
-  for (const last of arr)
-    for (const item of ['x', '-', 'o']) rst.push([...last, item])
-  if (deep == 0) return rst
-  return generateAllModes(rst, deep - 1)
+const generateAllModes = (arr = [[]], deep = 6) => {
+  if (deep === 0) return arr
+  let temp = []
+  for (const last of arr) for (const item of [max, min, blank]) temp.push([...last, item])
+  return generateAllModes(temp, deep - 1)
 }
 
 const allModes = generateAllModes()
@@ -20,25 +19,14 @@ const allModes = generateAllModes()
   .sort()
 
 const isDead2 = (x) =>
-  RegExp(`^ox-{0,2}x-*$`).test(x) ||
-  /^-*x-{0,2}xo$/.test(x) ||
-  /^-*x-{3}x-*$/.test(x) ||
-  /^xx-*$/.test(x) ||
-  /^-*xx$/.test(x)
-const isLive2 = (x) => /^-+x-{0,1}x-+$/.test(x)
-const isDead3 = (x) =>
-  /^o-*x-*x-*x-*$/.test(x) ||
-  /^-*x-*x-*x-*o$/.test(x) ||
-  /^xxx-*$/.test(x) ||
-  /^-*xxx$/.test(x)
-const isLive3 = (x) => /^-+x-*x-*x-+$/.test(x)
+  /^210{0,2}10*$/.test(x) || /^0*10{0,2}12$/.test(x) || /^0*10{3}10*$/.test(x) || /^110*$/.test(x) || /^0*11$/.test(x)
+const isLive2 = (x) => /^0+10{0,1}10+$/.test(x)
+const isDead3 = (x) => /^20*10*10*10*$/.test(x) || /^0*10*10*10*2$/.test(x) || /^1110*$/.test(x) || /^0*111$/.test(x)
+const isLive3 = (x) => /^0+10*10*10+$/.test(x)
 const isDead4 = (x) =>
-  /^o-*x-*x-*x-*x-*$/.test(x) ||
-  /^-*x-*x-*x-*x-*o$/.test(x) ||
-  /^xxxx-*$/.test(x) ||
-  /^-*xxxx$/.test(x)
-const isLive4 = (x) => /^-+x-*x-*x-*x-+$/.test(x)
-const isFinal5 = (x) => /xxxxx/.test(x)
+  /^20*10*10*10*10*$/.test(x) || /^0*10*10*10*10*2$/.test(x) || /^11110*$/.test(x) || /^0*1111$/.test(x)
+const isLive4 = (x) => /^0+10*10*10*10+$/.test(x)
+const isFinal5 = (x) => /11111/.test(x)
 
 const dead2 = allModes.filter(isDead2)
 const live2 = allModes.filter(isLive2)
@@ -65,21 +53,51 @@ live3.forEach((x) => (maxModes[x] = 'live3'))
 dead4.forEach((x) => (maxModes[x] = 'dead4'))
 live4.forEach((x) => (maxModes[x] = 'live4'))
 final5.forEach((x) => (maxModes[x] = 'final5'))
-maxModes['xxxxx'] = 'final5'
 
-// 替换属性名
 let theModes = {}
+// max 方
 for (const i in maxModes) {
-  const newProp = i.replaceAll('x', max).replaceAll('o', min)
-  theModes[newProp] = maxModes[i]
+  theModes[i] = maxModes[i]
 }
 
 // min 方
 for (const i in maxModes) {
-  const newProp = i.replaceAll('o', max).replaceAll('x', min)
+  const newProp = i.replaceAll(max, '$').replaceAll(min, max).replaceAll('$', min)
   theModes[newProp] = '-' + maxModes[i]
 }
 
-export { theModes }
+console.log({ theModes })
 
-console.log(theModes)
+const generateDeepMap = (map, deep = 6) => {
+  if (deep === 0) return map
+  const upper = new Map()
+  upper.set(max, map ? structuredClone(map) : 0)
+  upper.set(min, map ? structuredClone(map) : 0)
+  upper.set(blank, map ? structuredClone(map) : 0)
+  return generateDeepMap(upper, deep - 1)
+}
+let theModesDeepMap = generateDeepMap()
+
+const generateDeepArr = (arr, deep = 6) => {
+  if (deep === 0) return arr
+  const upper = [structuredClone(arr) || 0, structuredClone(arr) || 0, structuredClone(arr) || 0]
+  return generateDeepArr(upper, deep - 1)
+}
+let theModesDeepArr = generateDeepArr()
+console.log({ theModesDeepMap, theModesDeepArr })
+
+Object.keys(theModes).forEach((i) => {
+  const i0 = +i[0]
+  const i1 = +i[1]
+  const i2 = +i[2]
+  const i3 = +i[3]
+  const i4 = +i[4]
+  const i5 = +i[5]
+  let ss = theModes[i]
+  // console.log({ i, ss })
+  theModesDeepMap.get(i0).get(i1).get(i2).get(i3).get(i4).set(i5, ss)
+  theModesDeepArr[i0][i1][i2][i3][i4][i5] = ss
+  // console.log(theModesDeepMap[i0][i1][i2][i3][i4][i5])
+})
+
+export { theModes, theModesDeepMap, theModesDeepArr }

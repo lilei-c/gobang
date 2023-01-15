@@ -1,4 +1,4 @@
-import { boardLength } from './const'
+import { boardLength } from './const.js'
 
 const generate = (boardLength) => {
   let rst = []
