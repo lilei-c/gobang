@@ -2,6 +2,8 @@
 
 五子棋
 
+<https://notsofunnyha.github.io/gobang/dist/index.html>
+
 ### 性能优化总结
 
 - 避免字符串拼接
