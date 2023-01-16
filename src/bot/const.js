@@ -3,4 +3,5 @@ export const max = 1
 export const min = 2
 export const blank = 0
 
-export const boardLength = 12
+export const boardLength = 14
+export const boardCenter = (boardLength / 2) >> 0

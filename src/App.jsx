@@ -1,13 +1,15 @@
 import { useEffect } from 'react'
 import { useState } from 'react'
-import { max, min, blank } from './bot/const'
+import { max, min, blank, boardLength } from './bot/const'
 import { arrayN } from './bot/support'
-import { boardLength } from './bot/const'
-import { isBoardFull, theWinner, minimax } from './bot/minimax'
+import { Gobang } from './bot/minimax'
 import './App.css'
 
+const gobang = new Gobang({ boardLength })
+const thinkingDepth = 3
+
 const Square = ({ value, onClick }) => {
-  const show = (value) => ({ [max]: 'X', [min]: 'O' }[value])
+  const show = (value) => ({ [max]: '●', [min]: '○' }[value])
   return (
     <button className="square" onClick={onClick}>
       {show(value)}
@@ -26,48 +28,43 @@ const Board = ({ squares, onClick }) => {
 }
 
 const Game = () => {
+  console.log(gobang)
   const [isBotStep, isBotStepX] = useState(false)
   const [winner, winnerX] = useState(null)
   const [draw, drawX] = useState(false)
   const isGameOver = !!winner || draw
-  const [squares, squaresX] = useState(arrayN(boardLength).map((_) => arrayN(boardLength, blank)))
+
+  const getWinner = () => {
+    const winner = gobang.theWinner
+    if (winner) winnerX(winner === max ? 'bot' : 'human')
+    else if (gobang.isBoardFull) drawX(true)
+    return winner
+  }
+
   const onClickBoard = (i, j) => {
     if (isGameOver) return
-    if (squares[i][j] !== blank) return
-    squares[i][j] = min
-    squaresX([...squares])
+    if (gobang.node[i][j] !== blank) return
+    gobang.put([i, j], min)
+    isBotStepX(true)
   }
 
   useEffect(() => {
-    console.log(isBotStep)
-    if (!isGameOver && isBotStep) {
+    if (getWinner()) return
+    if (!winner && !isGameOver && isBotStep) {
       // boot play
       console.time('thinking')
-      const score = minimax(
-        squares.map((x) => [...x]),
-        3
-      )
+      const score = gobang.minimax(thinkingDepth)
       console.timeEnd('thinking')
       console.log({ score })
-      const [i, j] = score[1]
-      squares[i][j] = max
-      squaresX((_) => [...squares])
+      gobang.put(score[1], max)
+      isBotStepX(false)
     }
   }, [isBotStep])
-
-  useEffect(() => {
-    console.log(squares)
-    const winner = theWinner(squares)
-    console.log(winner, squares)
-    if (winner) winnerX(winner === max ? 'bot' : 'human')
-    else isBoardFull(squares) && drawX(true)
-    isBotStepX(!isBotStep)
-  }, [squares])
 
   return (
     <div className="game">
       <div className="game-board">
-        <Board squares={squares} onClick={onClickBoard} />
+        <Board squares={gobang.node} onClick={onClickBoard} />
       </div>
       <div className="game-info">
         <div>{isGameOver && 'game over'}</div>

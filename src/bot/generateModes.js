@@ -68,24 +68,12 @@ for (const i in maxModes) {
 
 console.log({ theModes })
 
-const generateDeepMap = (map, deep = 6) => {
-  if (deep === 0) return map
-  const upper = new Map()
-  upper.set(max, map ? structuredClone(map) : 0)
-  upper.set(min, map ? structuredClone(map) : 0)
-  upper.set(blank, map ? structuredClone(map) : 0)
-  return generateDeepMap(upper, deep - 1)
-}
-let theModesDeepMap = generateDeepMap()
-
 const generateDeepArr = (arr, deep = 6) => {
   if (deep === 0) return arr
   const upper = [structuredClone(arr) || 0, structuredClone(arr) || 0, structuredClone(arr) || 0]
   return generateDeepArr(upper, deep - 1)
 }
 let theModesDeepArr = generateDeepArr()
-console.log({ theModesDeepMap, theModesDeepArr })
-
 Object.keys(theModes).forEach((i) => {
   const i0 = +i[0]
   const i1 = +i[1]
@@ -95,9 +83,9 @@ Object.keys(theModes).forEach((i) => {
   const i5 = +i[5]
   let ss = theModes[i]
   // console.log({ i, ss })
-  theModesDeepMap.get(i0).get(i1).get(i2).get(i3).get(i4).set(i5, ss)
   theModesDeepArr[i0][i1][i2][i3][i4][i5] = ss
-  // console.log(theModesDeepMap[i0][i1][i2][i3][i4][i5])
 })
 
-export { theModes, theModesDeepMap, theModesDeepArr }
+console.log({ theModesDeepArr })
+
+export { theModesDeepArr }
