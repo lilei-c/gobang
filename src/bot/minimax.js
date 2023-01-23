@@ -7,6 +7,8 @@ export class Gobang {
     this.totalChessPieces = boardLength * boardLength
     this.node = arrayN(boardLength).map((_) => arrayN(boardLength, blank))
     this.stack = []
+    this.maxWins = []
+    this.minWins = []
   }
 
   put(position, maxOrMin) {
@@ -68,6 +70,7 @@ export class Gobang {
   isTerminalNode = () => this.theWinner || this.isBoardFull
 
   minimax(depth, alpha = -Infinity, beta = Infinity, isMax = true) {
+    // return evaluate(this.node)
     if (this.isTerminalNode() || depth === 0) {
       return [evaluate(this.node), null]
     }

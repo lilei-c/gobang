@@ -4,9 +4,14 @@ import { max, min, blank, boardLength } from './bot/const'
 import { arrayN } from './bot/support'
 import { Gobang } from './bot/minimax'
 import './App.css'
+import './bot/otherFivechess'
+import { Chessboard } from './bot/otherFivechess'
+
+var chessboard = new Chessboard(15, 15)
 
 const gobang = new Gobang({ boardLength })
 const thinkingDepth = 3
+console.log(gobang)
 
 const Square = ({ value, onClick }) => {
   const show = (value) => ({ [max]: '●', [min]: '○' }[value])
@@ -28,13 +33,12 @@ const Board = ({ squares, onClick }) => {
 }
 
 const Game = () => {
-  console.log(gobang)
   const [isBotStep, isBotStepX] = useState(false)
   const [winner, winnerX] = useState(null)
   const [draw, drawX] = useState(false)
   const isGameOver = !!winner || draw
 
-  const getWinner = () => {
+  const haveWinner = () => {
     const winner = gobang.theWinner
     if (winner) winnerX(winner === max ? 'bot' : 'human')
     else if (gobang.isBoardFull) drawX(true)
@@ -42,22 +46,33 @@ const Game = () => {
   }
 
   const onClickBoard = (i, j) => {
-    if (isGameOver) return
+    if (isGameOver || isBotStep) return console.log({ isGameOver })
     if (gobang.node[i][j] !== blank) return
-    gobang.put([i, j], min)
+    // gobang.put([i, j], min)
+
+    console.time('b1')
+    var res = Chessboard.prototype.min(chessboard, thinkingDepth)
+    console.timeEnd('b1')
+    chessboard.put(res.row, res.column, Chessboard.MIN)
+    gobang.put([res.row, res.column], min)
+
+    haveWinner()
     isBotStepX(true)
   }
 
   useEffect(() => {
-    if (getWinner()) return
     if (!winner && !isGameOver && isBotStep) {
       // boot play
       console.time('thinking')
       const score = gobang.minimax(thinkingDepth)
       console.timeEnd('thinking')
       console.log({ score })
-      gobang.put(score[1], max)
+      if (score && score[1]) {
+        gobang.put(score[1], max)
+        chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
+      }
       isBotStepX(false)
+      haveWinner()
     }
   }, [isBotStep])
 

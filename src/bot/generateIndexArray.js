@@ -1,12 +1,18 @@
 import { boardLength } from './const.js'
 
 const generate = (boardLength) => {
-  let rst = []
+  let rst = {
+    row: [],
+    col: [],
+    leftDown: [],
+    rightDown: [],
+  }
   // →
-  for (let i = 0; i < boardLength; i++)
+  for (let i = 0; i < boardLength; i++) {
+    let temp = []
     for (let j = 0; j < boardLength; j++)
       if (j < boardLength - 5)
-        rst.push([
+        temp.push([
           [i, j],
           [i, j + 1],
           [i, j + 2],
@@ -14,11 +20,14 @@ const generate = (boardLength) => {
           [i, j + 4],
           [i, j + 5],
         ])
+    rst.row.push(temp)
+  }
   // ↓
-  for (let i = 0; i < boardLength; i++)
+  for (let i = 0; i < boardLength; i++) {
+    let temp = []
     for (let j = 0; j < boardLength; j++)
       if (i < boardLength - 5)
-        rst.push([
+        temp.push([
           [i, j],
           [i + 1, j],
           [i + 2, j],
@@ -26,11 +35,14 @@ const generate = (boardLength) => {
           [i + 4, j],
           [i + 5, j],
         ])
+    rst.col.push(temp)
+  }
   // ↙
-  for (let i = 0; i < boardLength; i++)
+  for (let i = 0; i < boardLength; i++) {
+    let temp = []
     for (let j = 0; j < boardLength; j++)
       if (j > 4 && i < boardLength - 5)
-        rst.push([
+        temp.push([
           [i, j],
           [i + 1, j - 1],
           [i + 2, j - 2],
@@ -38,11 +50,14 @@ const generate = (boardLength) => {
           [i + 4, j - 4],
           [i + 5, j - 5],
         ])
+    rst.leftDown.push(temp)
+  }
   // ↘
-  for (let i = 0; i < boardLength; i++)
+  for (let i = 0; i < boardLength; i++) {
+    let temp = []
     for (let j = 0; j < boardLength; j++)
       if (j < boardLength - 5 && i < boardLength - 5)
-        rst.push([
+        temp.push([
           [i, j],
           [i + 1, j + 1],
           [i + 2, j + 2],
@@ -50,6 +65,10 @@ const generate = (boardLength) => {
           [i + 4, j + 4],
           [i + 5, j + 5],
         ])
+    rst.rightDown.push(temp)
+  }
+  console.error('特殊处理')
+  return rst
   // 刚好 5 位的 4 个对角
   // top ↙
   rst.push([

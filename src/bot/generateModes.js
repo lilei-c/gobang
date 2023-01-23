@@ -24,8 +24,8 @@ const isLive2 = (x) => /^0+10{0,1}10+$/.test(x)
 const isDead3 = (x) => /^20*10*10*10*$/.test(x) || /^0*10*10*10*2$/.test(x) || /^1110*$/.test(x) || /^0*111$/.test(x)
 const isLive3 = (x) => /^0+10*10*10+$/.test(x)
 const isDead4 = (x) =>
-  /^20*10*10*10*10*$/.test(x) || /^0*10*10*10*10*2$/.test(x) || /^11110*$/.test(x) || /^0*1111$/.test(x)
-const isLive4 = (x) => /^0+10*10*10*10+$/.test(x)
+  /^20*10*10*10*10*$/.test(x) || /^0*10*10*10*10*2$/.test(x) || /^10*10*10*10+$/.test(x) || /^0+10*10*10*1$/.test(x)
+const isLive4 = (x) => /011110/.test(x)
 const isFinal5 = (x) => /11111/.test(x)
 
 const dead2 = allModes.filter(isDead2)
@@ -66,8 +66,6 @@ for (const i in maxModes) {
   theModes[newProp] = '-' + maxModes[i]
 }
 
-console.log({ theModes })
-
 const generateDeepArr = (arr, deep = 6) => {
   if (deep === 0) return arr
   const upper = [structuredClone(arr) || 0, structuredClone(arr) || 0, structuredClone(arr) || 0]
@@ -86,6 +84,6 @@ Object.keys(theModes).forEach((i) => {
   theModesDeepArr[i0][i1][i2][i3][i4][i5] = ss
 })
 
-console.log({ theModesDeepArr })
+console.log({ theModes, theModesDeepArr })
 
 export { theModesDeepArr }
