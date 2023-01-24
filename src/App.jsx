@@ -46,23 +46,24 @@ const Board = ({ squares, onClick }) => {
 }
 
 const Game = () => {
-  const [isBotStep, isBotStepX] = useState(false)
+  const [isBotStep, isBotStepX] = useState(true)
   const [winner, winnerX] = useState(null)
   const [draw, drawX] = useState(false)
   const isGameOver = !!winner || draw
 
   const haveWinner = () => {
-    const winner = gobang.theWinner
+    const winner = gobang.theWinner()
     if (winner) winnerX(winner === max ? 'bot' : 'human')
     else if (gobang.isBoardFull) drawX(true)
     return winner
   }
 
   const onClickBoard = (i, j) => {
-    if (isGameOver || isBotStep) return console.log({ isGameOver })
-    isBotStepX(true)
+    if (isGameOver) return console.log({ isGameOver })
+    if (isBotStep) return console.log({ isBotStep })
     if (gobang.node[i][j] !== blank) return
     // gobang.put([i, j], min)
+    isBotStepX(true)
 
     console.time('b1')
     var res = Chessboard.prototype.min(chessboard, thinkingDepth)
