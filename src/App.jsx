@@ -10,26 +10,39 @@ import { Chessboard } from './bot/otherFivechess'
 var chessboard = new Chessboard(15, 15)
 
 const gobang = new Gobang({ boardLength })
-const thinkingDepth = 3
+const thinkingDepth = 2
 console.log(gobang)
 
-const Square = ({ value, onClick }) => {
+const Square = ({ value, onClick, className }) => {
   const show = (value) => ({ [max]: '●', [min]: '○' }[value])
   return (
-    <button className="square" onClick={onClick}>
+    <button className={`square ${className}`} onClick={onClick}>
+      <div className="square-line"></div>
+      <div className="square-line rotate90"></div>
+      <div></div>
       {show(value)}
     </button>
   )
 }
 
 const Board = ({ squares, onClick }) => {
-  return arrayN(boardLength).map((_, i) => (
-    <div key={i} className="board-row">
-      {arrayN(boardLength).map((_, j) => (
-        <Square key={j} value={squares[i][j]} onClick={() => onClick(i, j)} />
+  const lastChess = gobang.stack.length ? gobang.stack[gobang.stack.length - 1] : null
+  return (
+    <div>
+      {arrayN(boardLength).map((_, i) => (
+        <div key={i} className="board-row">
+          {arrayN(boardLength).map((_, j) => (
+            <Square
+              key={j}
+              value={squares[i][j]}
+              className={lastChess && lastChess[0] === i && lastChess[1] === j ? 'lastChess' : null}
+              onClick={() => onClick(i, j)}
+            />
+          ))}
+        </div>
       ))}
     </div>
-  ))
+  )
 }
 
 const Game = () => {
@@ -47,6 +60,7 @@ const Game = () => {
 
   const onClickBoard = (i, j) => {
     if (isGameOver || isBotStep) return console.log({ isGameOver })
+    isBotStepX(true)
     if (gobang.node[i][j] !== blank) return
     // gobang.put([i, j], min)
 
@@ -57,7 +71,6 @@ const Game = () => {
     gobang.put([res.row, res.column], min)
 
     haveWinner()
-    isBotStepX(true)
   }
 
   useEffect(() => {

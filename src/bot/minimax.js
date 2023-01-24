@@ -70,9 +70,8 @@ export class Gobang {
   isTerminalNode = () => this.theWinner || this.isBoardFull
 
   minimax(depth, alpha = -Infinity, beta = Infinity, isMax = true) {
-    // return evaluate(this.node)
     if (this.isTerminalNode() || depth === 0) {
-      return [evaluate(this.node), null]
+      return [evaluate(this.node, !isMax), null]
     }
     const allNextPosition = this.getAllOptimalNextStep()
     if (isMax) {

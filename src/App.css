@@ -14,8 +14,12 @@ ul {
 }
 
 .square {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background: #fff;
-  border: 1px solid #999;
+  border: unset;
   float: left;
   font-size: 24px;
   font-weight: bold;
@@ -44,4 +48,19 @@ ul {
 
 .game-info {
   margin-left: 20px;
+}
+
+.lastChess {
+  background-color: #eee;
+}
+
+.square-line {
+  position: absolute;
+  border-color: #999;
+  height: 100%;
+  border-left: 1px solid #aaa;
+}
+
+.rotate90 {
+  rotate: 90deg;
 }

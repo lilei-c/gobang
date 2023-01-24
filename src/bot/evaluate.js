@@ -33,7 +33,7 @@ const modeScores = {
 }
 
 console.log({ theIndexArray })
-const evaluate = (node) => {
+const evaluate = (node, isMax) => {
   // console.log({ node })
   const sixIndexToSixNodeVal = (x) => {
     const x0 = node[x[0][0]][x[0][1]]
@@ -131,12 +131,24 @@ const evaluate = (node) => {
   if (live3Count > 0 && live4Count > 0) rst += live3AndLive4
   if (neLive3Count > 0 && neLive4Count > 0) rst += neLive3AndNeLive4
   // console.log({
+  //   isMax,
   //   rst,
   //   allChessMode,
   //   modeScores,
   //   rowNodeVals,
   //   node: structuredClone(node),
   // })
+
+  // 当搜索层数是奇数时, 搜索结束后下一步是对手走棋
+  // 此时:
+  // 对手已有四连, 则对手取胜
+  // 对手已有活三, 我方无四连, 对手胜
+  if (isMax) {
+    if (neDead4Count || neLive4Count) return -Infinity
+    if (neLive3Count) {
+      if (!dead4Count && !live4Count) return -Infinity
+    }
+  }
   return rst
 }
 

@@ -9,4 +9,12 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
+  <script>
+    const setFontSize = () => {
+      document.getElementsByTagName('html')[0].style.fontSize = document.body.clientWidth / 100 + 'px'
+      console.log(document.body.clientWidth / 100 + 'px')
+    }
+    window.addEventListener('resize', setFontSize)
+    setFontSize()
+  </script>
 </html>
