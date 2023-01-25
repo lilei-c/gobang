@@ -123,6 +123,9 @@ const evaluate = (node, isMax) => {
     if (x === '-live4') neLive4Count++
   })
 
+  // max方获胜不再考虑对手下棋
+  if (rst === Infinity) return Infinity
+
   // 额外得分
   if (live3Count > 1) rst += moreLive3
   if (neLive3Count > 1) rst += moreNeLive3

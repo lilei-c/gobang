@@ -10,7 +10,7 @@ import { Chessboard } from './bot/otherFivechess'
 var chessboard = new Chessboard(15, 15)
 
 const gobang = new Gobang({ boardLength })
-const thinkingDepth = 2
+const thinkingDepth = 4
 console.log(gobang)
 
 const Square = ({ value, onClick, className }) => {
@@ -62,14 +62,15 @@ const Game = () => {
     if (isGameOver) return console.log({ isGameOver })
     if (isBotStep) return console.log({ isBotStep })
     if (gobang.node[i][j] !== blank) return
-    // gobang.put([i, j], min)
     isBotStepX(true)
+    gobang.put([i, j], min)
+    gobang.zobrist.resetHash()
 
-    console.time('b1')
-    var res = Chessboard.prototype.min(chessboard, thinkingDepth)
-    console.timeEnd('b1')
-    chessboard.put(res.row, res.column, Chessboard.MIN)
-    gobang.put([res.row, res.column], min)
+    // console.time('b1')
+    // var res = Chessboard.prototype.min(chessboard, thinkingDepth)
+    // console.timeEnd('b1')
+    // chessboard.put(res.row, res.column, Chessboard.MIN)
+    // gobang.put([res.row, res.column], min)
 
     haveWinner()
   }

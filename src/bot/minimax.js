@@ -1,19 +1,29 @@
 import { blank, boardLength, boardCenter, max, min } from './const'
 import { evaluate } from './evaluate.js'
 import { arrayN } from './support'
+import { Zobrist } from './zobrist'
 
 export class Gobang {
   constructor({ boardLength }) {
     this.totalChessPieces = boardLength * boardLength
     this.node = arrayN(boardLength).map((_) => arrayN(boardLength, blank))
     this.stack = []
-    this.maxWins = []
-    this.minWins = []
+    this.zobrist = new Zobrist({ size: boardLength })
   }
 
   put(position, maxOrMin) {
-    this.node[position[0]][position[1]] = maxOrMin
+    const [i, j] = position
+    this.node[i][j] = maxOrMin
+    this.zobrist.go(i, j, maxOrMin === max)
     this.stack.push(position)
+  }
+
+  rollback() {
+    if (this.stack.length) {
+      const [i, j] = this.stack.pop()
+      this.zobrist.go(i, j, this.node[i][j] === max)
+      this.node[i][j] = blank
+    }
   }
 
   isEmptyPosition(i, j) {
@@ -55,24 +65,19 @@ export class Gobang {
     return rst
   }
 
-  childs() {
-    let rst = []
-    for (let i in this.node) for (let j in this.node[i]) if (this.node[i][j] === blank) rst.push([i, j])
-    return rst
-  }
-
-  rollback() {
-    if (this.stack.length) {
-      const position = this.stack.pop()
-      this.node[position[0]][position[1]] = blank
-    }
-  }
-
   isTerminalNode = () => this.theWinner() || this.isBoardFull
 
   minimax(depth, alpha = -Infinity, beta = Infinity, isMax = true) {
     if (this.isTerminalNode() || depth === 0) {
-      return [evaluate(this.node, !isMax), null]
+      let socre = this.zobrist.get()
+      if (socre === undefined) {
+        socre = evaluate(this.node, !isMax)
+        // this.zobrist.set(socre)
+        // console.log('miss', depth, { socre })
+      } else {
+        // console.log('hit', depth, structuredClone(this.stack[this.stack.length - 1]), { socre })
+      }
+      return [socre, null]
     }
     const allNextPosition = this.getAllOptimalNextStep()
     if (isMax) {
@@ -86,6 +91,7 @@ export class Gobang {
           val = childVal
           nextPosition = childPosition
         }
+        // console.log(alpha)
         alpha = Math.max(alpha, val)
         if (beta <= alpha) break
       }
