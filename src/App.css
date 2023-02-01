@@ -74,10 +74,16 @@ ul {
   height: 18px;
   position: absolute;
   border-radius: 50%;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .chess-white {
   background: #fff;
+  color: #cbb4b4;
 }
 .chess-black {
   background: #000;
+  color: #9d9d9d;
 }

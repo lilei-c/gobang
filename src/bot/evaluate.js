@@ -3,9 +3,9 @@ import { theModesDeepArr } from './generateModes'
 import { theIndexArray } from './generateIndexArray'
 
 const dead2 = 5
-const dead3 = 10
-const dead4 = 20
+const dead3 = 50
 const live2 = 100
+const dead4 = 200
 const live3 = 500
 const live4 = 10000
 const moreLive3 = 1000

@@ -10,16 +10,17 @@ import { Chessboard } from './bot/otherFivechess'
 var chessboard = new Chessboard(15, 15)
 
 const gobang = new Gobang({ boardLength })
-console.log(gobang)
 window.gobang = gobang
 
-const Square = ({ value, onClick, className }) => {
+const Square = ({ position, value, onClick, className }) => {
+  const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
   return (
     <button className={`square ${className}`} onClick={onClick}>
       <div className="square-line"></div>
       <div className="square-line rotate90"></div>
-      {value === Gobang.max && <div className={`chess chess-black`}></div>}
-      {value === Gobang.min && <div className={`chess chess-white`}></div>}
+      {value !== Gobang.blank && (
+        <div className={`chess chess-${value === Gobang.max ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
+      )}
     </button>
   )
 }
@@ -33,6 +34,7 @@ const Board = ({ squares, onClick }) => {
           {arrayN(boardLength).map((_, j) => (
             <Square
               key={j}
+              position={[i, j]}
               value={squares[i][j]}
               className={lastChess && lastChess[0] === i && lastChess[1] === j ? 'lastChess' : null}
               onClick={() => onClick(i, j)}
@@ -62,33 +64,34 @@ const Game = () => {
     if (isBotStep) return console.log({ isBotStep })
     if (gobang.node[i][j] !== blank) return
     isBotStepX(true)
-    gobang.put([i, j], min)
+    // gobang.put([i, j], min)
+
+    console.time('b1')
+    var res = Chessboard.prototype.min(chessboard, 2)
+    console.timeEnd('b1')
+    chessboard.put(res.row, res.column, Chessboard.MIN)
+    gobang.put([res.row, res.column], min)
+
     gobang.zobrist.resetHash()
-
-    // console.time('b1')
-    // var res = Chessboard.prototype.min(chessboard, 4)
-    // console.timeEnd('b1')
-    // chessboard.put(res.row, res.column, Chessboard.MIN)
-    // gobang.put([res.row, res.column], min)
-
     haveWinner()
   }
 
   useEffect(() => {
     if (!winner && !isGameOver && isBotStep) {
-      // boot play
-      console.time('thinking')
-      gobang.initABData()
-      const score = gobang.minimax(Gobang.defaultDepth)
-      gobang.logABData()
-      console.timeEnd('thinking')
-      console.log({ score })
-      if (score && score[1]) {
-        gobang.put(score[1], max)
-        chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
-      }
-      isBotStepX(false)
-      haveWinner()
+      setTimeout(() => {
+        console.time('thinking')
+        gobang.initStats()
+        const score = gobang.minimax(Gobang.defaultDepth)
+        gobang.logStats()
+        console.timeEnd('thinking')
+        console.log({ score })
+        if (score && score[1]) {
+          gobang.put(score[1], max)
+          chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
+        }
+        isBotStepX(false)
+        haveWinner()
+      }, 0)
     }
   }, [isBotStep])
 

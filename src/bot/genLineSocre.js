@@ -3,25 +3,25 @@ var Socre = {
   dead3: 10,
   live2: 100,
   dead4: 1000,
-  live3: 1000,
-  live4: 10000,
-  live5: 100000,
+  live3: 10000,
+  live4: 100000,
+  live5: 1000000,
 }
-var countLine = (chess, block) => (s) => {
+var countLine = (chess, block, wall) => (s) => {
   var r = 0b1
   for (let i = 0; i < s.length; i++) {
     const val = s[i]
     if (i < 4) {
       r <<= 1
       if (val === chess) r += 1
-      else if (val === block) {
+      else if (val === block || val === wall) {
         r = 0b1
       }
     } else if (i === 4) {
       r <<= 1
       r += 1 //console.log(r.toString(2))
     } else {
-      if (val === block) break
+      if (val === block || val === wall) break
       r <<= 1
       if (val === chess) r += 1 //console.log(r.toString(2))
     }
