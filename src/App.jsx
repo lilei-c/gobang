@@ -10,17 +10,16 @@ import { Chessboard } from './bot/otherFivechess'
 var chessboard = new Chessboard(15, 15)
 
 const gobang = new Gobang({ boardLength })
-const thinkingDepth = 4
 console.log(gobang)
+window.gobang = gobang
 
 const Square = ({ value, onClick, className }) => {
-  const show = (value) => ({ [max]: '●', [min]: '○' }[value])
   return (
     <button className={`square ${className}`} onClick={onClick}>
       <div className="square-line"></div>
       <div className="square-line rotate90"></div>
-      <div></div>
-      {show(value)}
+      {value === Gobang.max && <div className={`chess chess-black`}></div>}
+      {value === Gobang.min && <div className={`chess chess-white`}></div>}
     </button>
   )
 }
@@ -46,7 +45,7 @@ const Board = ({ squares, onClick }) => {
 }
 
 const Game = () => {
-  const [isBotStep, isBotStepX] = useState(true)
+  const [isBotStep, isBotStepX] = useState(false)
   const [winner, winnerX] = useState(null)
   const [draw, drawX] = useState(false)
   const isGameOver = !!winner || draw
@@ -67,7 +66,7 @@ const Game = () => {
     gobang.zobrist.resetHash()
 
     // console.time('b1')
-    // var res = Chessboard.prototype.min(chessboard, thinkingDepth)
+    // var res = Chessboard.prototype.min(chessboard, 4)
     // console.timeEnd('b1')
     // chessboard.put(res.row, res.column, Chessboard.MIN)
     // gobang.put([res.row, res.column], min)
@@ -79,7 +78,9 @@ const Game = () => {
     if (!winner && !isGameOver && isBotStep) {
       // boot play
       console.time('thinking')
-      const score = gobang.minimax(thinkingDepth)
+      gobang.initABData()
+      const score = gobang.minimax(Gobang.defaultDepth)
+      gobang.logABData()
       console.timeEnd('thinking')
       console.log({ score })
       if (score && score[1]) {

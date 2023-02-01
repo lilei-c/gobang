@@ -18,10 +18,10 @@ ul {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #fff;
+  background: unset;
   border: unset;
   float: left;
-  font-size: 24px;
+  font-size: 32px;
   font-weight: bold;
   margin-right: -1px;
   margin-top: -1px;
@@ -46,12 +46,16 @@ ul {
   justify-content: center;
 }
 
+.game-board {
+  background: wheat;
+}
+
 .game-info {
   margin-left: 20px;
 }
 
 .lastChess {
-  background-color: #eee;
+  background-color: #bbb;
 }
 
 .square-line {
@@ -63,4 +67,17 @@ ul {
 
 .rotate90 {
   rotate: 90deg;
+}
+
+.chess {
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  border-radius: 50%;
+}
+.chess-white {
+  background: #fff;
+}
+.chess-black {
+  background: #000;
 }

@@ -34,30 +34,26 @@ const modeScores = {
 
 console.log({ theIndexArray })
 const evaluate = (node, isMax) => {
+  // return 1
   // console.log({ node })
   const sixIndexToSixNodeVal = (x) => {
-    const x0 = node[x[0][0]][x[0][1]]
+    const a = x[0][0]
+    const b = x[0][1]
+    const x0 = node[a][b]
     const x1 = node[x[1][0]][x[1][1]]
     const x2 = node[x[2][0]][x[2][1]]
     const x3 = node[x[3][0]][x[3][1]]
     const x4 = node[x[4][0]][x[4][1]]
     const x5 = node[x[5][0]][x[5][1]]
+    const aa = x0 + x1 * 10 + x2 * 100 + x3 * 1000 + x4 * 10000 + x5 * 100000
     // x5 可能为空 ?
-    return {
-      starting: x[0],
-      // pValues: x.map((position) => node[position[0]][position[1]]),
-      chessMode: theModesDeepArr[x0][x1][x2][x3][x4][x5 || blank],
-    }
+    return theModesDeepArr[x0][x1][x2][x3][x4][x5 || blank]
   }
 
-  let rowNodeVals = theIndexArray.row.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x.chessMode))
-  let colNodeVals = theIndexArray.col.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x.chessMode))
-  let leftDownNodeVals = theIndexArray.leftDown.map((line) =>
-    line.map(sixIndexToSixNodeVal).filter((x) => !!x.chessMode)
-  )
-  let rightDownNodeVals = theIndexArray.rightDown.map((line) =>
-    line.map(sixIndexToSixNodeVal).filter((x) => !!x.chessMode)
-  )
+  let rowNodeVals = theIndexArray.row.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
+  let colNodeVals = theIndexArray.col.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
+  let leftDownNodeVals = theIndexArray.leftDown.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
+  let rightDownNodeVals = theIndexArray.rightDown.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
   // console.log({ ...modes })
 
   /**  现有匹配模式会出现重复统计的情况, 例如 0011100 会被统计成2个活三, 所以需要去除重 (不去重无法给双三增加额外分数, 本身也不准确),
@@ -68,7 +64,7 @@ const evaluate = (node, isMax) => {
    *
    * 活四: 不会重复
    * 冲四: 没细想, 但应该和活三差不多道理, 先直接去重
-   * 死三, 活二, 四二: 权重不大, 暂不处理
+   * 死三, 活二, 死二: 权重不大, 暂不处理
    */
   let allChessMode = []
   const getChessMode = (line) => {
@@ -77,27 +73,27 @@ const evaluate = (node, isMax) => {
     let haveDead4 = false
     let haveNeDead4 = false
     line.forEach((sixPointVal) => {
-      if (sixPointVal.chessMode === 'live3') {
+      if (sixPointVal === 'live3') {
         if (haveLive3) return
         haveLive3 = true
-        return allChessMode.push(sixPointVal.chessMode)
+        return allChessMode.push(sixPointVal)
       }
-      if (sixPointVal.chessMode === '-live3') {
+      if (sixPointVal === '-live3') {
         if (haveNeLive3) return
         haveNeLive3 = true
-        return allChessMode.push(sixPointVal.chessMode)
+        return allChessMode.push(sixPointVal)
       }
-      if (sixPointVal.chessMode === 'dead4') {
+      if (sixPointVal === 'dead4') {
         if (haveDead4) return
         haveDead4 = true
-        return allChessMode.push(sixPointVal.chessMode)
+        return allChessMode.push(sixPointVal)
       }
-      if (sixPointVal.chessMode === '-dead4') {
+      if (sixPointVal === '-dead4') {
         if (haveNeDead4) return
         haveNeDead4 = true
-        return allChessMode.push(sixPointVal.chessMode)
+        return allChessMode.push(sixPointVal)
       }
-      allChessMode.push(sixPointVal.chessMode)
+      allChessMode.push(sixPointVal)
     })
   }
   // console.log({ rowNodeVals, colNodeVals, leftDownNodeVals, rightDownNodeVals })
@@ -114,7 +110,8 @@ const evaluate = (node, isMax) => {
   let live4Count = 0
   let neLive4Count = 0
   allChessMode.forEach((x) => {
-    rst += modeScores[x]
+    const a = modeScores[x]
+    rst += a
     if (x === 'live3') live3Count++
     if (x === '-live3') neLive3Count++
     if (x === 'dead4') dead4Count++
