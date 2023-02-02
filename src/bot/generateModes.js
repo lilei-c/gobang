@@ -5,12 +5,12 @@
  * https://baijiahao.baidu.com/s?id=1716036313199600725&wfr=spider&for=pc
  */
 
-import { max, min, blank } from './const.js'
+import { max, min, empty } from './const.js'
 
 const generateAllModes = (arr = [[]], deep = 6) => {
   if (deep === 0) return arr
   let temp = []
-  for (const last of arr) for (const item of [max, min, blank]) temp.push([...last, item])
+  for (const last of arr) for (const item of [max, min, empty]) temp.push([...last, item])
   return generateAllModes(temp, deep - 1)
 }
 

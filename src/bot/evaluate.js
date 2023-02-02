@@ -1,11 +1,11 @@
-import { blank } from './const'
+import { empty } from './const'
 import { theModesDeepArr } from './generateModes'
 import { theIndexArray } from './generateIndexArray'
 
 const dead2 = 5
 const dead3 = 50
 const live2 = 100
-const dead4 = 200
+const dead4 = 500
 const live3 = 500
 const live4 = 10000
 const moreLive3 = 1000
@@ -47,7 +47,7 @@ const evaluate = (node, isMax) => {
     const x5 = node[x[5][0]][x[5][1]]
     const aa = x0 + x1 * 10 + x2 * 100 + x3 * 1000 + x4 * 10000 + x5 * 100000
     // x5 可能为空 ?
-    return theModesDeepArr[x0][x1][x2][x3][x4][x5 || blank]
+    return theModesDeepArr[x0][x1][x2][x3][x4][x5 || empty]
   }
 
   let rowNodeVals = theIndexArray.row.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
@@ -103,6 +103,8 @@ const evaluate = (node, isMax) => {
   rightDownNodeVals.forEach(getChessMode)
 
   let rst = 0
+  let maxSocre = 0
+  let minSocre = 0
   let live3Count = 0
   let neLive3Count = 0
   let dead4Count = 0

@@ -4,11 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite + React</title>
-    <script type="module" crossorigin src="/gobang/dist/assets/index-597cb6a6.js"></script>
-    <link rel="stylesheet" href="/gobang/dist/assets/index-f27f330b.css">
+    <script type="module" crossorigin src="/gobang/dist/assets/index-35a2daa0.js"></script>
+    <link rel="stylesheet" href="/gobang/dist/assets/index-5bdac1dc.css">
   </head>
   <body>
     <div id="root"></div>
     
   </body>
+  <script>
+    const setFontSize = () => {
+      document.getElementsByTagName('html')[0].style.fontSize = document.body.clientWidth / 100 + 'px'
+      // console.log(document.body.clientWidth / 100 + 'px')
+    }
+    window.addEventListener('resize', setFontSize)
+    setFontSize()
+  </script>
 </html>

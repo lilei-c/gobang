@@ -1,4 +1,4 @@
-import { blank, boardLength, boardCenter, max, min } from './const'
+import { empty, boardLength, boardCenter, max, min } from './const'
 import { evaluate } from './evaluate.js'
 import { countLine, countLineSocre, Socre } from './genLineSocre'
 import { arrayN } from './support'
@@ -7,7 +7,7 @@ import { Zobrist } from './zobrist'
 export class Gobang {
   constructor({ boardLength }) {
     this.totalChessPieces = boardLength * boardLength
-    this.node = arrayN(boardLength).map((_) => arrayN(boardLength, blank))
+    this.node = arrayN(boardLength).map((_) => arrayN(boardLength, Gobang.empty))
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
     this.maxPointsSocre = arrayN(boardLength).map((_) => arrayN(boardLength, null))
@@ -15,34 +15,60 @@ export class Gobang {
     this.stats = {} // 统计性能优化数据
     this.enableStats = true // 记录 stats
     this.enableLog = false
+    this.firstHand = Gobang.min
   }
   static max = max
   static min = min
-  static blank = blank
+  static empty = empty
   static wall = 3
   //
-  static genLimit = 40 // 启发式搜索, 选取节点数
+  static genLimit = 30 // 启发式搜索, 选取节点数
   static defaultDepth = 4
 
-  put(position, maxOrMin) {
+  put(position, role) {
     const [i, j] = position
-    this.node[i][j] = maxOrMin
-    this.zobrist.go(i, j, maxOrMin === max)
+    this.node[i][j] = role
+    this.zobrist.go(i, j, role === Gobang.max)
     this.stack.push(position)
     this.updateXLineSocre(i, j)
   }
 
-  rollback() {
-    if (this.stack.length) {
+  rollback(steps = 1) {
+    if (this.stack.length <= steps) return
+    while (steps-- > 0) {
       const [i, j] = this.stack.pop()
       this.zobrist.go(i, j, this.node[i][j] === max)
-      this.node[i][j] = blank
+      this.node[i][j] = Gobang.empty
       this.updateXLineSocre(i, j)
     }
   }
 
+  maxGo() {
+    console.time('thinking')
+    this.zobrist.resetHash()
+    this.initStats()
+    const score = this.minimax(Gobang.defaultDepth)
+    console.log({ score })
+    this.put(score[1], Gobang.max)
+    this.logStats()
+    console.timeEnd('thinking')
+    return score
+  }
+
+  minGo(i, j) {
+    // if (isGameOver) return console.log({ isGameOver })
+    // if (isBotStep) return console.log({ isBotStep })
+    if (!this.isEmptyPosition(i, j)) return false
+    this.put([i, j], Gobang.min)
+    return true
+  }
+
+  minRepent() {
+    if (this.stack.length >= 2) this.rollback(2)
+  }
+
   isEmptyPosition(i, j) {
-    return i >= 0 && i < boardLength && j >= 0 && j < boardLength && this.node[i][j] === blank
+    return i >= 0 && i < boardLength && j >= 0 && j < boardLength && this.node[i][j] === Gobang.empty
   }
 
   getNearPositions(position) {
@@ -243,7 +269,7 @@ export class Gobang {
   //
   updatePointSocre(position) {
     const [i, j] = position
-    if (this.node[i][j] !== Gobang.blank) {
+    if (this.node[i][j] !== Gobang.empty) {
       this.maxPointsSocre[i][j] = 0
       this.minPointsSocre[i][j] = 0
     } else {

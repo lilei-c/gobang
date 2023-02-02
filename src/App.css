@@ -87,3 +87,10 @@ ul {
   background: #000;
   color: #9d9d9d;
 }
+.opbtns {
+  padding: 20px;
+  display: flex;
+}
+.opbtns button {
+  margin: 0 20px;
+}

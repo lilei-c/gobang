@@ -1,15 +1,16 @@
 import { useEffect } from 'react'
 import { useState } from 'react'
-import { max, min, blank, boardLength } from './bot/const'
-import { arrayN } from './bot/support'
+import { boardLength } from './bot/const'
+import { arrayN, debounce } from './bot/support'
 import { Gobang } from './bot/minimax'
 import './App.css'
 import './bot/otherFivechess'
 import { Chessboard } from './bot/otherFivechess'
+import { useReducer } from 'react'
 
-var chessboard = new Chessboard(15, 15)
+var chessboard = new Chessboard(boardLength, boardLength)
 
-const gobang = new Gobang({ boardLength })
+let gobang = new Gobang({ boardLength })
 window.gobang = gobang
 
 const Square = ({ position, value, onClick, className }) => {
@@ -18,8 +19,8 @@ const Square = ({ position, value, onClick, className }) => {
     <button className={`square ${className}`} onClick={onClick}>
       <div className="square-line"></div>
       <div className="square-line rotate90"></div>
-      {value !== Gobang.blank && (
-        <div className={`chess chess-${value === Gobang.max ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
+      {value !== Gobang.empty && (
+        <div className={`chess chess-${value === gobang.firstHand ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
       )}
     </button>
   )
@@ -47,62 +48,64 @@ const Board = ({ squares, onClick }) => {
 }
 
 const Game = () => {
-  const [isBotStep, isBotStepX] = useState(false)
-  const [winner, winnerX] = useState(null)
-  const [draw, drawX] = useState(false)
+  const [start, startX] = useState(false)
+  const [_, forceUpdate] = useReducer((x) => x + 1, 0)
+  const winner = gobang.theWinner()
+  const draw = !winner && gobang.isBoardFull
   const isGameOver = !!winner || draw
 
-  const haveWinner = () => {
-    const winner = gobang.theWinner()
-    if (winner) winnerX(winner === max ? 'bot' : 'human')
-    else if (gobang.isBoardFull) drawX(true)
-    return winner
-  }
-
   const onClickBoard = (i, j) => {
+    if (!start) return console.log({ start })
     if (isGameOver) return console.log({ isGameOver })
-    if (isBotStep) return console.log({ isBotStep })
-    if (gobang.node[i][j] !== blank) return
-    isBotStepX(true)
-    // gobang.put([i, j], min)
 
-    console.time('b1')
-    var res = Chessboard.prototype.min(chessboard, 2)
-    console.timeEnd('b1')
-    chessboard.put(res.row, res.column, Chessboard.MIN)
-    gobang.put([res.row, res.column], min)
-
-    gobang.zobrist.resetHash()
-    haveWinner()
+    // console.time('b1')
+    // var res = Chessboard.prototype.min(chessboard, 2)
+    // console.timeEnd('b1')
+    // chessboard.put(res.row, res.column, Chessboard.MIN)
+    // const done = gobang.minGo(res.row, res.column)
+    const done = gobang.minGo(i, j)
+    console.log({ done })
+    if (done) {
+      forceUpdate()
+      setTimeout(maxGo, 0)
+    }
   }
 
-  useEffect(() => {
-    if (!winner && !isGameOver && isBotStep) {
-      setTimeout(() => {
-        console.time('thinking')
-        gobang.initStats()
-        const score = gobang.minimax(Gobang.defaultDepth)
-        gobang.logStats()
-        console.timeEnd('thinking')
-        console.log({ score })
-        if (score && score[1]) {
-          gobang.put(score[1], max)
-          chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
-        }
-        isBotStepX(false)
-        haveWinner()
-      }, 0)
-    }
-  }, [isBotStep])
+  const maxGo = () => {
+    const score = gobang.maxGo()
+    forceUpdate()
+    chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
+  }
+
+  const onStart = () => {
+    startX(true)
+    gobang = new Gobang({ boardLength })
+    chessboard = new Chessboard(boardLength, boardLength)
+    if (gobang.firstHand === Gobang.max) maxGo()
+    forceUpdate()
+  }
 
   return (
     <div className="game">
       <div className="game-board">
-        <Board squares={gobang.node} onClick={onClickBoard} />
+        <Board squares={gobang.node} onClick={debounce(onClickBoard)} />
+      </div>
+      <div className="opbtns">
+        <button onClick={onStart}>{start ? '重来' : '开始'}</button>
+        {start && (
+          <button
+            onClick={() => {
+              gobang.minRepent()
+              forceUpdate()
+            }}
+          >
+            {'悔棋'}
+          </button>
+        )}
       </div>
       <div className="game-info">
         <div>{isGameOver && 'game over'}</div>
-        <div>{winner && `${winner} 胜出`}</div>
+        <div>{winner && `${winner === Gobang.max ? 'bot' : 'human'} 胜出`}</div>
         <div>{draw && '平局'}</div>
         <ol>{/* TODO */}</ol>
       </div>
