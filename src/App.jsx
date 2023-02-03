@@ -27,7 +27,7 @@ const Square = ({ position, value, onClick, className }) => {
 }
 
 const Board = ({ squares, onClick }) => {
-  const lastChess = gobang.stack.length ? gobang.stack[gobang.stack.length - 1] : null
+  const lastChess = gobang.lastChessPosition
   return (
     <div>
       {arrayN(boardLength).map((_, i) => (
@@ -50,13 +50,11 @@ const Board = ({ squares, onClick }) => {
 const Game = () => {
   const [start, startX] = useState(false)
   const [_, forceUpdate] = useReducer((x) => x + 1, 0)
-  const winner = gobang.theWinner()
-  const draw = !winner && gobang.isBoardFull
-  const isGameOver = !!winner || draw
+  const { winner, isFinal, isDraw } = gobang
 
   const onClickBoard = (i, j) => {
     if (!start) return console.log({ start })
-    if (isGameOver) return console.log({ isGameOver })
+    if (isFinal) return console.log({ isFinal })
 
     // console.time('b1')
     // var res = Chessboard.prototype.min(chessboard, 2)
@@ -104,9 +102,9 @@ const Game = () => {
         )}
       </div>
       <div className="game-info">
-        <div>{isGameOver && 'game over'}</div>
+        <div>{isFinal && 'game over'}</div>
         <div>{winner && `${winner === Gobang.max ? 'bot' : 'human'} 胜出`}</div>
-        <div>{draw && '平局'}</div>
+        <div>{isDraw && '平局'}</div>
         <ol>{/* TODO */}</ol>
       </div>
     </div>

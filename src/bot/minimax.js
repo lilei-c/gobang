@@ -107,10 +107,8 @@ export class Gobang {
     return rst
   }
 
-  isTerminalNode = () => this.theWinner() || this.isBoardFull
-
   minimax(depth, alpha = -Infinity, beta = Infinity, isMax = true) {
-    if (this.isTerminalNode() || depth === 0) {
+    if (this.isFinal || depth === 0) {
       this.enableStats && this.stats.abCut.eva++
       let socre = this.zobrist.get()
       if (socre === undefined) {
@@ -235,27 +233,6 @@ export class Gobang {
       }
     }
     return rst
-  }
-
-  theWinner() {
-    if (this.stack.length < 9) return null
-    const [lastI, lastJ] = this.stack[this.stack.length - 1]
-    const mayBeWinner = this.node[lastI][lastJ]
-    const chessInFourDirection = this.getChessInFourDirection(lastI, lastJ)
-    for (let i = 0; i < 4; i++) {
-      let count = 0
-      const chesses = chessInFourDirection[i]
-      for (let j = 0; j < chesses.length; j++) {
-        if (chesses[j] === mayBeWinner) count++
-        else count = 0
-        if (count === 5) return mayBeWinner
-      }
-    }
-    return null
-  }
-
-  get isBoardFull() {
-    return this.stack.length === this.totalChessPieces
   }
 
   //
@@ -395,6 +372,39 @@ export class Gobang {
     // return points
     rst.length !== points.length && console.log(`rst.length !== points.length`)
     return rst.length <= Gobang.genLimit ? rst : rst.slice(0, Gobang.genLimit)
+  }
+
+  get theWinner() {
+    if (this.stack.length < 9) return null
+    const [lastI, lastJ] = this.stack[this.stack.length - 1]
+    const mayBeWinner = this.node[lastI][lastJ]
+    const chessInFourDirection = this.getChessInFourDirection(lastI, lastJ)
+    for (let i = 0; i < 4; i++) {
+      let count = 0
+      const chesses = chessInFourDirection[i]
+      for (let j = 0; j < chesses.length; j++) {
+        if (chesses[j] === mayBeWinner) count++
+        else count = 0
+        if (count === 5) return mayBeWinner
+      }
+    }
+    return null
+  }
+
+  get isFinal() {
+    return !!this.theWinner || this.isBoardFull
+  }
+
+  get isBoardFull() {
+    return this.stack.length === this.totalChessPieces
+  }
+
+  get lastChessPosition() {
+    return this.stack.length ? this.stack[this.stack.length - 1] : null
+  }
+
+  get isDraw() {
+    return this.isBoardFull && !this.theWinner
   }
 
   // 统计性能优化数据
