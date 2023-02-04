@@ -1,4 +1,4 @@
-export const arrayN = (n, str = null) => Array(n).fill(str)
+export const arrayN = (n, val = null) => Array(n).fill(val)
 export const colToRow = (arr) => arrayN(arr.length).map((_, i) => arrayN(arr.length).map((_, j) => arr[j][i]))
 export const debounce = (fn, gap = 20) => {
   let now = +new Date()

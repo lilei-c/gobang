@@ -5,9 +5,10 @@ import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
 export class Gobang {
-  constructor({ boardLength }) {
+  constructor({}) {
     this.totalChessPieces = boardLength * boardLength
     this.node = arrayN(boardLength).map((_) => arrayN(boardLength, Gobang.empty))
+    this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
     this.maxPointsSocre = arrayN(boardLength).map((_) => arrayN(boardLength, null))
@@ -25,20 +26,98 @@ export class Gobang {
   static genLimit = 30 // 启发式搜索, 选取节点数
   static defaultDepth = 4
 
+  isWall(i, j) {
+    return i < 0 || i >= boardLength || j < 0 || j >= boardLength
+  }
+
+  initNode() {
+    // 横
+    this.node1 = arrayN(boardLength, 0b000000000000000000000000000000)
+    // 竖
+    const buffer = new ArrayBuffer(4 * 15)
+    this.node2 = new Int32Array(buffer)
+    for (let i = 0; i <= 14; i++) this.node2[i] = 0b000000000000000000000000000000
+    // 左斜
+    // 0  0,0
+    // 1  0,1  1,0
+    // 2  0,2  1,1  2,0
+    // 从上往下数15行, 棋盘外的设置为墙, 点击 i,j 时, 做如下计算
+    // 行数:i+j
+    // bit位(高->低):i
+    this.node3 = []
+    for (let rowsIndex = 0; rowsIndex < boardLength * 2 - 1; rowsIndex++) {
+      let rst = 0b0
+      for (let i = 0; i < 15; i++) {
+        const j = rowsIndex - i
+        rst <<= 2
+        if (this.isWall(i, j)) {
+          rst += 0b11
+        }
+      }
+      this.node3[rowsIndex] = rst
+    }
+    // 右斜
+    // 0  0,14 1,15
+    // 1  0,13 1,14
+    // 从上往下数 (固定0-14行, 棋盘外的设置为墙)
+    // 行数:14+i-j
+    // bit位(高->低):i
+    this.node4 = []
+    for (let rowsIndex = 0; rowsIndex < boardLength * 2 - 1; rowsIndex++) {
+      let rst = 0b0
+      for (let i = 0; i < 15; i++) {
+        const j = 14 + i - rowsIndex
+        rst <<= 2
+        if (this.isWall(i, j)) {
+          rst += 0b11
+        }
+      }
+      this.node4[rowsIndex] = rst
+    }
+  }
+  printNode() {
+    console.log(this.node1.map((x) => x.toString(2)))
+    console.log(this.node2.map((x) => x.toString(2)))
+    console.log(this.node3.map((x) => x.toString(2)))
+    console.log(this.node4.map((x) => x.toString(2)))
+  }
+
   put(position, role) {
     const [i, j] = position
     this.node[i][j] = role
     this.zobrist.go(i, j, role === Gobang.max)
     this.stack.push(position)
+
+    // 横
+    this.node1[i] = this.node1[i] | (role << (2 * (14 - j)))
+    // 竖
+    this.node2[j] = this.node2[j] | (role << (2 * (14 - i)))
+    // 左斜
+    this.node3[i + j] = this.node3[i + j] | (role << (2 * (14 - i)))
+    // 右斜
+    this.node4[14 + i - j] = this.node4[14 + i - j] | (role << (2 * (14 - i)))
+
     this.updateXLineSocre(i, j)
   }
 
   rollback(steps = 1) {
-    if (this.stack.length <= steps) return
+    if (this.stack.length < steps) return
     while (steps-- > 0) {
       const [i, j] = this.stack.pop()
       this.zobrist.go(i, j, this.node[i][j] === max)
       this.node[i][j] = Gobang.empty
+
+      // 横
+      const move1 = 2 * (14 - j)
+      this.node1[i] = (this.node1[i] | (0b11 << move1)) ^ (0b11 << move1)
+      // 竖
+      const move2 = 2 * (14 - i)
+      this.node2[j] = (this.node2[j] | (0b11 << move2)) ^ (0b11 << move2)
+      // 左斜
+      this.node3[i + j] = (this.node3[i + j] | (0b11 << move2)) ^ (0b11 << move2)
+      // 右斜
+      this.node4[14 + i - j] = (this.node4[14 + i - j] | (0b11 << move2)) ^ (0b11 << move2)
+
       this.updateXLineSocre(i, j)
     }
   }
@@ -68,7 +147,7 @@ export class Gobang {
   }
 
   isEmptyPosition(i, j) {
-    return i >= 0 && i < boardLength && j >= 0 && j < boardLength && this.node[i][j] === Gobang.empty
+    return !this.isWall(i, j) && this.node[i][j] === Gobang.empty
   }
 
   getNearPositions(position) {
@@ -165,40 +244,97 @@ export class Gobang {
 
   getChessInFourDirection(centerI, centerJ) {
     let rst = [[], [], [], []]
-    const minI = centerI - 4 > 0 ? centerI - 4 : 0
-    const maxI = centerI + 4 < boardLength - 1 ? centerI + 4 : boardLength - 1
-    const minJ = centerJ - 4 > 0 ? centerJ - 4 : 0
-    const maxJ = centerJ + 4 < boardLength - 1 ? centerJ + 4 : boardLength - 1
     // 横
-    for (let a = -4; a <= 4; a++) {
-      if (centerJ + a >= minJ && centerJ + a <= maxJ) rst[0].push(this.node[centerI][centerJ + a])
-      else rst[0].push(Gobang.wall)
-    }
+    const s = this.node1[centerI]
+    const s1 = centerJ >= 4 ? (s >> (2 * (18 - centerJ))) & 0b11 : 0b11
+    const s2 = centerJ >= 3 ? (s >> (2 * (17 - centerJ))) & 0b11 : 0b11
+    const s3 = centerJ >= 2 ? (s >> (2 * (16 - centerJ))) & 0b11 : 0b11
+    const s4 = centerJ >= 1 ? (s >> (2 * (15 - centerJ))) & 0b11 : 0b11
+    const s5 = (s >> (2 * (14 - centerJ))) & 0b11
+    const s6 = centerJ <= 13 ? (s >> (2 * (13 - centerJ))) & 0b11 : 0b11
+    const s7 = centerJ <= 12 ? (s >> (2 * (12 - centerJ))) & 0b11 : 0b11
+    const s8 = centerJ <= 11 ? (s >> (2 * (11 - centerJ))) & 0b11 : 0b11
+    const s9 = centerJ <= 10 ? (s >> (2 * (10 - centerJ))) & 0b11 : 0b11
+    rst[0] = [s1, s2, s3, s4, s5, s6, s7, s8, s9]
     // 竖
-    for (let a = -4; a <= 4; a++) {
-      if (centerI + a >= minI && centerI + a <= maxI) rst[1].push(this.node[centerI + a][centerJ])
-      else rst[1].push(Gobang.wall)
-    }
+    const v = this.node2[centerJ]
+    const v1 = centerI >= 4 ? (v >> (2 * (18 - centerI))) & 0b11 : 0b11
+    const v2 = centerI >= 3 ? (v >> (2 * (17 - centerI))) & 0b11 : 0b11
+    const v3 = centerI >= 2 ? (v >> (2 * (16 - centerI))) & 0b11 : 0b11
+    const v4 = centerI >= 1 ? (v >> (2 * (15 - centerI))) & 0b11 : 0b11
+    const v5 = (v >> (2 * (14 - centerI))) & 0b11
+    const v6 = centerI <= 13 ? (v >> (2 * (13 - centerI))) & 0b11 : 0b11
+    const v7 = centerI <= 12 ? (v >> (2 * (12 - centerI))) & 0b11 : 0b11
+    const v8 = centerI <= 11 ? (v >> (2 * (11 - centerI))) & 0b11 : 0b11
+    const v9 = centerI <= 10 ? (v >> (2 * (10 - centerI))) & 0b11 : 0b11
+    rst[1] = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
     // 左斜
-    for (let a = 4; a > 0; a--) {
-      if (centerI + a <= maxI && centerJ - a >= minJ) rst[2].push(this.node[centerI + a][centerJ - a])
-      else rst[2].push(Gobang.wall)
-    }
-    rst[2].push(this.node[centerI][centerJ])
-    for (let a = 1; a <= 4; a++) {
-      if (centerI - a >= minI && centerJ + a <= maxJ) rst[2].push(this.node[centerI - a][centerJ + a])
-      else rst[2].push(Gobang.wall)
-    }
+    const l = this.node3[centerI + centerJ]
+    const l1 = centerI >= 4 ? (l >> (2 * (18 - centerI))) & 0b11 : 0b11
+    const l2 = centerI >= 3 ? (l >> (2 * (17 - centerI))) & 0b11 : 0b11
+    const l3 = centerI >= 2 ? (l >> (2 * (16 - centerI))) & 0b11 : 0b11
+    const l4 = centerI >= 1 ? (l >> (2 * (15 - centerI))) & 0b11 : 0b11
+    const l5 = (l >> (2 * (14 - centerI))) & 0b11
+    const l6 = centerI <= 13 ? (l >> (2 * (13 - centerI))) & 0b11 : 0b11
+    const l7 = centerI <= 12 ? (l >> (2 * (12 - centerI))) & 0b11 : 0b11
+    const l8 = centerI <= 11 ? (l >> (2 * (11 - centerI))) & 0b11 : 0b11
+    const l9 = centerI <= 10 ? (l >> (2 * (10 - centerI))) & 0b11 : 0b11
+    rst[2] = [l1, l2, l3, l4, l5, l6, l7, l8, l9]
     // 右斜
-    for (let a = 4; a > 0; a--) {
-      if (centerI - a >= minI && centerJ - a >= minJ) rst[3].push(this.node[centerI - a][centerJ - a])
-      else rst[3].push(Gobang.wall)
-    }
-    rst[3].push(this.node[centerI][centerJ])
-    for (let a = 1; a <= 4; a++) {
-      if (centerI + a <= maxI && centerJ + a <= maxJ) rst[3].push(this.node[centerI + a][centerJ + a])
-      else rst[3].push(Gobang.wall)
-    }
+    const rr = this.node4[14 + centerI - centerJ]
+    const rr1 = centerI >= 4 ? (rr >> (2 * (18 - centerI))) & 0b11 : 0b11
+    const rr2 = centerI >= 3 ? (rr >> (2 * (17 - centerI))) & 0b11 : 0b11
+    const rr3 = centerI >= 2 ? (rr >> (2 * (16 - centerI))) & 0b11 : 0b11
+    const rr4 = centerI >= 1 ? (rr >> (2 * (15 - centerI))) & 0b11 : 0b11
+    const rr5 = (rr >> (2 * (14 - centerI))) & 0b11
+    const rr6 = centerI <= 13 ? (rr >> (2 * (13 - centerI))) & 0b11 : 0b11
+    const rr7 = centerI <= 12 ? (rr >> (2 * (12 - centerI))) & 0b11 : 0b11
+    const rr8 = centerI <= 11 ? (rr >> (2 * (11 - centerI))) & 0b11 : 0b11
+    const rr9 = centerI <= 10 ? (rr >> (2 * (10 - centerI))) & 0b11 : 0b11
+    rst[3] = [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
+
+    // // 旧数据结构, 顺便用于测试
+    // let rstOld = [[], [], [], []]
+    // const minI = centerI - 4 > 0 ? centerI - 4 : 0
+    // const maxI = centerI + 4 < boardLength - 1 ? centerI + 4 : boardLength - 1
+    // const minJ = centerJ - 4 > 0 ? centerJ - 4 : 0
+    // const maxJ = centerJ + 4 < boardLength - 1 ? centerJ + 4 : boardLength - 1
+    // // 横
+    // for (let a = -4; a <= 4; a++) {
+    //   if (centerJ + a >= minJ && centerJ + a <= maxJ) rstOld[0].push(this.node[centerI][centerJ + a])
+    //   else rstOld[0].push(Gobang.wall)
+    // }
+    // // 竖
+    // for (let a = -4; a <= 4; a++) {
+    //   if (centerI + a >= minI && centerI + a <= maxI) rstOld[1].push(this.node[centerI + a][centerJ])
+    //   else rstOld[1].push(Gobang.wall)
+    // }
+    // // 左斜
+    // for (let a = 4; a > 0; a--) {
+    //   if (centerI + a <= maxI && centerJ - a >= minJ) rstOld[2].push(this.node[centerI + a][centerJ - a])
+    //   else rstOld[2].push(Gobang.wall)
+    // }
+    // rstOld[2].push(this.node[centerI][centerJ])
+    // for (let a = 1; a <= 4; a++) {
+    //   if (centerI - a >= minI && centerJ + a <= maxJ) rstOld[2].push(this.node[centerI - a][centerJ + a])
+    //   else rstOld[2].push(Gobang.wall)
+    // }
+    // // 右斜
+    // for (let a = 4; a > 0; a--) {
+    //   if (centerI - a >= minI && centerJ - a >= minJ) rstOld[3].push(this.node[centerI - a][centerJ - a])
+    //   else rstOld[3].push(Gobang.wall)
+    // }
+    // rstOld[3].push(this.node[centerI][centerJ])
+    // for (let a = 1; a <= 4; a++) {
+    //   if (centerI + a <= maxI && centerJ + a <= maxJ) rstOld[3].push(this.node[centerI + a][centerJ + a])
+    //   else rstOld[3].push(Gobang.wall)
+    // }
+    // if (rstOld[0].join() != rst[0].join()) console.log('横', centerI, centerJ, rstOld[0], rst[0])
+    // if (rstOld[1].join() != rst[1].join()) console.log('竖', centerI, centerJ, rstOld[1], rst[1])
+    // if (rstOld[2].join() != rst[2].join() && rstOld[2].join() != rst[2].reverse().join())
+    //   console.log('左斜', centerI, centerJ, rstOld[2], rst[2])
+    // if (rstOld[3].join() != rst[3].join() && rstOld[3].join() != rst[3].reverse().join())
+    //   console.log('右斜', centerI, centerJ, rstOld[3], rst[3])
     return rst
   }
 
@@ -374,7 +510,7 @@ export class Gobang {
     return rst.length <= Gobang.genLimit ? rst : rst.slice(0, Gobang.genLimit)
   }
 
-  get theWinner() {
+  get winner() {
     if (this.stack.length < 9) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
     const mayBeWinner = this.node[lastI][lastJ]
@@ -392,7 +528,7 @@ export class Gobang {
   }
 
   get isFinal() {
-    return !!this.theWinner || this.isBoardFull
+    return !!this.winner || this.isBoardFull
   }
 
   get isBoardFull() {
@@ -404,7 +540,7 @@ export class Gobang {
   }
 
   get isDraw() {
-    return this.isBoardFull && !this.theWinner
+    return this.isBoardFull && !this.winner
   }
 
   // 统计性能优化数据

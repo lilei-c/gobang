@@ -11,7 +11,6 @@ import { useReducer } from 'react'
 var chessboard = new Chessboard(boardLength, boardLength)
 
 let gobang = new Gobang({ boardLength })
-window.gobang = gobang
 
 const Square = ({ position, value, onClick, className }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
@@ -78,6 +77,7 @@ const Game = () => {
   const onStart = () => {
     startX(true)
     gobang = new Gobang({ boardLength })
+    window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
     if (gobang.firstHand === Gobang.max) maxGo()
     forceUpdate()
