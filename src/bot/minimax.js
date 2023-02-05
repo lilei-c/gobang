@@ -97,7 +97,7 @@ export class Gobang {
     // 右斜
     this.node4[14 + i - j] = this.node4[14 + i - j] | (role << (2 * (14 - i)))
 
-    this.updateXLineSocre(i, j)
+    this.updateFourLineSocre(i, j)
   }
 
   rollback(steps = 1) {
@@ -118,7 +118,7 @@ export class Gobang {
       // 右斜
       this.node4[14 + i - j] = (this.node4[14 + i - j] | (0b11 << move2)) ^ (0b11 << move2)
 
-      this.updateXLineSocre(i, j)
+      this.updateFourLineSocre(i, j)
     }
   }
 
@@ -339,7 +339,7 @@ export class Gobang {
   }
 
   //
-  getPositionInFourDirection(i, j) {
+  getPositionsInFourDirection(i, j) {
     let rst = []
     if (!this.stack.length) return rst
     const minI = i - 4 > 0 ? i - 4 : 0
@@ -371,12 +371,13 @@ export class Gobang {
     return rst
   }
 
-  //
-  updateXLineSocre(i, j) {
-    // i,j 米字线上的点都需要更新
-    const fourLinePoints = this.getPositionInFourDirection(i, j)
+  // i,j 米字线上的点都需要更新
+  updateFourLineSocre(i, j) {
+    const positionsInFourDirection = this.getPositionsInFourDirection(i, j)
     // console.log(fourLinePoints)
-    fourLinePoints && fourLinePoints.forEach(this.updatePointSocre.bind(this))
+    for (var a = 0; a < positionsInFourDirection.length; a++) {
+      this.updatePointSocre(positionsInFourDirection[a])
+    }
   }
 
   //
@@ -435,7 +436,7 @@ export class Gobang {
     points.forEach((point) => {
       const [i, j] = point
       const maxSocre = this.maxPointsSocre[i][j]
-      // 这里 if-else 顺序很重要, 一定要是`值大`的在前
+      // 这里 if-else 顺序很重要, 一定要是`分大`的在前, 不然会漏掉点
       if (maxSocre >= Socre.live5) max5.push(point)
       else if (maxSocre >= Socre.live4) max4.push(point)
       else if (maxSocre >= Socre.dead4 + Socre.live3) maxMore3.push(point)
