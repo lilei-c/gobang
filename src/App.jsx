@@ -76,7 +76,7 @@ const Game = () => {
 
   const onStart = () => {
     startX(true)
-    gobang = new Gobang({ boardLength })
+    gobang = new Gobang({ firstHand: Gobang.min })
     window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
     if (gobang.firstHand === Gobang.max) maxGo()
@@ -88,7 +88,7 @@ const Game = () => {
   return (
     <div className="game">
       <div className="game-board">
-        <Board squares={gobang.node} onClick={debounce(onClickBoard)} />
+        <Board squares={gobang.node} onClick={debounce(onClickBoard, 50)} />
       </div>
       <div className="opbtns">
         <button onClick={onStart}>{start ? '重来' : '开始'}</button>

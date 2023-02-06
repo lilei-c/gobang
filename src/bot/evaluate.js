@@ -1,4 +1,4 @@
-import { empty } from './const'
+import { boardLength, empty } from './const'
 import { theModesDeepArr } from './generateModes'
 import { theIndexArray } from './generateIndexArray'
 
@@ -103,8 +103,6 @@ const evaluate = (node, isMax) => {
   rightDownNodeVals.forEach(getChessMode)
 
   let rst = 0
-  let maxSocre = 0
-  let minSocre = 0
   let live3Count = 0
   let neLive3Count = 0
   let dead4Count = 0

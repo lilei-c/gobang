@@ -5,9 +5,11 @@ import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
 const EMPTY = 0
+const MAX = 1
+const MIN = 2
 
 export class Gobang {
-  constructor({}) {
+  constructor({ firstHand }) {
     this.totalChessPieces = boardLength * boardLength
     this.node = arrayN(boardLength).map((_) => arrayN(boardLength, Gobang.empty))
     this.initNode()
@@ -18,15 +20,15 @@ export class Gobang {
     this.stats = {} // 统计性能优化数据
     this.enableStats = true // 记录 stats
     this.enableLog = false
-    this.firstHand = Gobang.min
+    this.firstHand = firstHand || Gobang.min
   }
   static max = max
   static min = min
   static empty = empty
   static wall = 3
   //
-  static genLimit = 30 // 启发式搜索, 选取节点数
-  static defaultDepth = 5
+  static genLimit = 20 // 启发式搜索, 选取节点数
+  static defaultDepth = 6
 
   isWall(i, j) {
     return i < 0 || i >= boardLength || j < 0 || j >= boardLength
@@ -106,7 +108,7 @@ export class Gobang {
     if (this.stack.length < steps) return
     while (steps-- > 0) {
       const [i, j] = this.stack.pop()
-      this.zobrist.go(i, j, this.node[i][j] === max)
+      this.zobrist.go(i, j, this.getChess(i, j) === max)
       this.node[i][j] = Gobang.empty
 
       // 横
@@ -129,11 +131,13 @@ export class Gobang {
     console.time('thinking')
     this.zobrist.resetHash()
     this.initStats()
-    const score = this.minimax(Gobang.defaultDepth)
+    // 前几个落子剪枝效率不高, 搜索层数少点
+    const score = this.minimax(this.stack.length < 4 ? 4 : Gobang.defaultDepth)
     console.log({ score })
     this.put(score[1], Gobang.max)
     this.logStats()
     console.timeEnd('thinking')
+    console.log('socre', this.evaluate2())
     return score
   }
 
@@ -141,6 +145,7 @@ export class Gobang {
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
     this.put([i, j], Gobang.min)
+    console.log('socre', this.evaluate2())
     return true
   }
 
@@ -149,7 +154,7 @@ export class Gobang {
   }
 
   isEmptyPosition(i, j) {
-    return !this.isWall(i, j) && this.node[i][j] === Gobang.empty
+    return !this.isWall(i, j) && this.getChess(i, j) === Gobang.empty
   }
 
   getNearPositions(position) {
@@ -205,7 +210,8 @@ export class Gobang {
       this.enableStats && this.stats.abCut.eva++
       let socre = this.zobrist.get()
       if (socre === undefined) {
-        socre = evaluate(this.node, !isMax)
+        // socre = evaluate(this.node, !isMax)
+        socre = this.evaluate2()
         this.zobrist.set(socre)
         this.enableStats && this.stats.zobrist.miss++
       } else {
@@ -397,13 +403,10 @@ export class Gobang {
   //
   updatePointSocre(position) {
     const [i, j] = position
-    if (this.getChess(i, j) !== Gobang.empty) {
-      this.maxPointsSocre[i][j] = 0
-      this.minPointsSocre[i][j] = 0
-    } else {
-    }
-
-    if (this.node[i][j] !== Gobang.empty) {
+    // this.minPointsSocre[i][j] = this.evaPoint(i, j, Gobang.min)
+    // this.maxPointsSocre[i][j] = this.evaPoint(i, j, Gobang.max)
+    // return
+    if (this.getChess(i, j) !== EMPTY) {
       this.maxPointsSocre[i][j] = 0
       this.minPointsSocre[i][j] = 0
     } else {
@@ -533,10 +536,24 @@ export class Gobang {
     return rst.length <= Gobang.genLimit ? rst : rst.slice(0, Gobang.genLimit)
   }
 
+  evaluate2() {
+    const winner = this.winner
+    if (winner === Gobang.max) return Socre.live5 * 10
+    else if (winner === Gobang.min) return -Socre.live5 * 10
+    let maxSocre = 0
+    let minSocre = 0
+    for (let i = 0; i < boardLength; i++)
+      for (let j = 0; j < boardLength; j++) {
+        maxSocre += this.maxPointsSocre[i][j]
+        minSocre += this.minPointsSocre[i][j]
+      }
+    return maxSocre - minSocre * (this.firstHand === MIN ? 2 : 1.5)
+  }
+
   get winner() {
     if (this.stack.length < 9) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
-    const mayBeWinner = this.node[lastI][lastJ]
+    const mayBeWinner = this.getChess(lastI, lastJ)
     const chessInFourDirection = this.getChessInFourDirection(lastI, lastJ)
     for (let i = 0; i < 4; i++) {
       let count = 0
@@ -571,14 +588,14 @@ export class Gobang {
     // AB剪枝
     this.stats = {
       abCut: {
-        all: Math.pow(Gobang.genLimit, Gobang.defaultDepth),
+        all: Gobang.genLimit ** Gobang.defaultDepth,
         eva: 0,
         cut: 0,
         toString() {
           const { all, eva, cut } = this.stats.abCut
           const realCut = all - eva
           // 节点总数是理论最大值, 实际达不到 (对弈到某一步时, 例如对手已有冲四, 或己方能形成活四, 则下一步只有唯一的选择)
-          return `AB剪枝 最大节点总数:${all} 理论最少评估${Math.pow(all, 0.5)} 实际评估:${eva} 剪去:${cut}/${realCut}`
+          return `AB剪枝 最大节点总数:${all} 理论最少评估${all ** 0.5} 实际评估:${eva} 剪去:${cut}/${realCut}`
         },
       },
       zobrist: {

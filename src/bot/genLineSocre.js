@@ -1,9 +1,9 @@
 var Socre = {
   dead2: 1,
   dead3: 10,
-  live2: 100,
+  live2: 800,
   dead4: 1000,
-  live3: 10000,
+  live3: 2000,
   live4: 100000,
   live5: 1000000,
 }
