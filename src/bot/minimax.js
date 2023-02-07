@@ -244,9 +244,9 @@ export class Gobang {
           nextPosition = childPosition
         }
         alpha = Math.max(alpha, val)
+        // beta 剪枝
         if (beta <= alpha) {
           this.enableStats && this.stats.abCut.cut++
-          // console.log('alpha cut')
           break
         }
       }
@@ -263,6 +263,7 @@ export class Gobang {
           nextPosition = childPosition
         }
         beta = Math.min(beta, val)
+        // alpah 剪枝
         if (beta <= alpha) {
           this.enableStats && this.stats.abCut.cut++
           break
