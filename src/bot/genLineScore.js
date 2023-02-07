@@ -1,9 +1,9 @@
-var Socre = {
+var Score = {
   dead2: 1,
   dead3: 10,
-  live2: 800,
-  dead4: 1000,
-  live3: 2000,
+  live2: 100,
+  live3: 1500,
+  dead4: 2000,
   live4: 100000,
   live5: 1000000,
 }
@@ -51,28 +51,28 @@ var isLive2 = (x) => /^0+10{0,1}10+$/.test(x) && x.length > 5
 var isLive3 = (x) => [/010110/, /011010/, /01110/, /1010101/].some((t) => t.test(x))
 var isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) => t.test(x))
 var is5 = (x) => /1{5}/.test(x)
-var countLineSocre = []
-aa.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Socre.dead2) && (countLineSocre[+`0b${x}`] = Socre.dead2))
-aa.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Socre.dead3) && (countLineSocre[+`0b${x}`] = Socre.dead3))
-aa.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Socre.dead4) && (countLineSocre[+`0b${x}`] = Socre.dead4))
-aa.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Socre.live2) && (countLineSocre[+`0b${x}`] = Socre.live2))
-aa.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Socre.live3) && (countLineSocre[+`0b${x}`] = Socre.live3))
-aa.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Socre.live4) && (countLineSocre[+`0b${x}`] = Socre.live4))
-aa.forEach((x) => is5(x.slice(1)) && (obj[x] = Socre.live5) && (countLineSocre[+`0b${x}`] = Socre.live5))
+var countLineScore = []
+aa.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.dead2) && (countLineScore[+`0b${x}`] = Score.dead2))
+aa.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.dead3) && (countLineScore[+`0b${x}`] = Score.dead3))
+aa.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.dead4) && (countLineScore[+`0b${x}`] = Score.dead4))
+aa.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.live2) && (countLineScore[+`0b${x}`] = Score.live2))
+aa.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.live3) && (countLineScore[+`0b${x}`] = Score.live3))
+aa.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.live4) && (countLineScore[+`0b${x}`] = Score.live4))
+aa.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.live5) && (countLineScore[+`0b${x}`] = Score.live5))
 console.log(
   'no match',
   Object.keys(obj)
     .filter((x) => !obj[x])
     .map((x) => x.slice(1))
 )
-Object.keys(Socre).forEach((m) => {
+Object.keys(Score).forEach((m) => {
   console.log(
     m,
     Object.keys(obj)
-      .filter((x) => obj[x] === Socre[m])
+      .filter((x) => obj[x] === Score[m])
       .map((x) => x.slice(1))
   )
 })
-console.log({ countLineSocre })
+console.log({ countLineScore })
 
-export { countLineSocre, Socre, countLine }
+export { countLineScore, Score, countLine }

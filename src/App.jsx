@@ -18,7 +18,7 @@ const Square = ({ position, value, onClick, className }) => {
     <button className={`square ${className}`} onClick={onClick}>
       <div className="square-line"></div>
       <div className="square-line rotate90"></div>
-      {value !== Gobang.empty && (
+      {value !== Gobang.EMPTY && (
         <div className={`chess chess-${value === gobang.firstHand ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
       )}
     </button>
@@ -76,14 +76,14 @@ const Game = () => {
 
   const onStart = () => {
     startX(true)
-    gobang = new Gobang({ firstHand: Gobang.min })
+    gobang = new Gobang({ firstHand: Gobang.MAX })
     window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
-    if (gobang.firstHand === Gobang.max) maxGo()
+    if (gobang.firstHand === Gobang.MAX) maxGo()
     forceUpdate()
   }
 
-  winner && console.log(`${winner === Gobang.max ? 'bot' : 'human'} 胜出`)
+  winner && console.log(`${winner === Gobang.MAX ? 'bot' : 'human'} 胜出`)
 
   return (
     <div className="game">
@@ -105,7 +105,7 @@ const Game = () => {
       </div>
       <div className="game-info">
         <div>{isFinal && 'game over'}</div>
-        <div>{winner && `${winner === Gobang.max ? 'bot' : 'human'} 胜出`}</div>
+        <div>{winner && `${winner === Gobang.MAX ? 'bot' : 'human'} 胜出`}</div>
         <div>{isDraw && '平局'}</div>
         <ol>{/* TODO */}</ol>
       </div>

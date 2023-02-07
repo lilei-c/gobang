@@ -20,7 +20,7 @@ class Zobrist {
   }
 
   set(val) {
-    // this.hash[this.code] = val
+    this.hash[this.code] = val
   }
 
   resetHash() {

@@ -1,34 +1,35 @@
-import { empty, boardLength, boardCenter, max, min } from './const'
+import { boardLength, boardCenter, max, min } from './const'
 import { evaluate } from './evaluate.js'
-import { countLine, countLineSocre, Socre } from './genLineSocre'
+import { countLine, countLineScore, Score } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
 const EMPTY = 0
 const MAX = 1
 const MIN = 2
+const WALL = 3
 
 export class Gobang {
   constructor({ firstHand }) {
     this.totalChessPieces = boardLength * boardLength
-    this.node = arrayN(boardLength).map((_) => arrayN(boardLength, Gobang.empty))
+    this.node = arrayN(boardLength).map((_) => arrayN(boardLength, EMPTY))
     this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
-    this.maxPointsSocre = arrayN(boardLength).map((_) => arrayN(boardLength, null))
-    this.minPointsSocre = arrayN(boardLength).map((_) => arrayN(boardLength, null))
+    this.maxPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, null))
+    this.minPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, null))
     this.stats = {} // 统计性能优化数据
     this.enableStats = true // 记录 stats
     this.enableLog = false
-    this.firstHand = firstHand || Gobang.min
+    this.firstHand = firstHand || MIN
+    this.genLimit = 20 // 启发式搜索, 选取节点数
+    this.seekDepth = 6
+    this.kilSeeklDepth = 21
   }
-  static max = max
-  static min = min
-  static empty = empty
-  static wall = 3
-  //
-  static genLimit = 20 // 启发式搜索, 选取节点数
-  static defaultDepth = 6
+  static MAX = MAX
+  static MIN = MIN
+  static EMPTY = EMPTY
+  static WALL = WALL
 
   isWall(i, j) {
     return i < 0 || i >= boardLength || j < 0 || j >= boardLength
@@ -89,7 +90,7 @@ export class Gobang {
   put(position, role) {
     const [i, j] = position
     this.node[i][j] = role
-    this.zobrist.go(i, j, role === Gobang.max)
+    this.zobrist.go(i, j, role === MAX)
     this.stack.push(position)
 
     // 横
@@ -101,7 +102,7 @@ export class Gobang {
     // 右斜
     this.node4[14 + i - j] = this.node4[14 + i - j] | (role << (2 * (14 - i)))
 
-    this.updateFourLineSocre(i, j)
+    this.updateFourLineScore(i, j)
   }
 
   rollback(steps = 1) {
@@ -109,7 +110,7 @@ export class Gobang {
     while (steps-- > 0) {
       const [i, j] = this.stack.pop()
       this.zobrist.go(i, j, this.getChess(i, j) === max)
-      this.node[i][j] = Gobang.empty
+      this.node[i][j] = EMPTY
 
       // 横
       const move1 = 2 * (14 - j)
@@ -122,30 +123,40 @@ export class Gobang {
       // 右斜
       this.node4[14 + i - j] = (this.node4[14 + i - j] | (0b11 << move2)) ^ (0b11 << move2)
 
-      this.updateFourLineSocre(i, j)
+      this.updateFourLineScore(i, j)
     }
   }
 
   maxGo() {
     if (this.isFinal) return
-    console.time('thinking')
     this.zobrist.resetHash()
     this.initStats()
+    let score
+    if (this.stack.length > 4) {
+      console.time('thinking kill')
+      score = this.minimax(this.seekKillDepth, true)
+      console.timeEnd('thinking kill')
+    }
     // 前几个落子剪枝效率不高, 搜索层数少点
-    const score = this.minimax(this.stack.length < 4 ? 4 : Gobang.defaultDepth)
+    if (score && score[0] >= Score.live5) {
+      console.warn('算杀成功 :)')
+    } else {
+      console.time('thinking')
+      score = this.minimax(this.stack.length < 4 ? 4 : this.seekDepth)
+      console.timeEnd('thinking')
+    }
     console.log({ score })
-    this.put(score[1], Gobang.max)
+    this.put(score[1], MAX)
     this.logStats()
-    console.timeEnd('thinking')
-    console.log('socre', this.evaluate2())
+    console.log('score', this.evaluate2())
     return score
   }
 
   minGo(i, j) {
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
-    this.put([i, j], Gobang.min)
-    console.log('socre', this.evaluate2())
+    this.put([i, j], MIN)
+    console.log('score', this.evaluate2())
     return true
   }
 
@@ -154,7 +165,7 @@ export class Gobang {
   }
 
   isEmptyPosition(i, j) {
-    return !this.isWall(i, j) && this.getChess(i, j) === Gobang.empty
+    return !this.isWall(i, j) && this.getChess(i, j) === EMPTY
   }
 
   getNearPositions(position) {
@@ -205,29 +216,28 @@ export class Gobang {
     return (this.node1[i] >> (2 * (14 - j))) & 0b11
   }
 
-  minimax(depth, alpha = -Infinity, beta = Infinity, isMax = true) {
+  minimax(depth, kill, alpha = -Infinity, beta = Infinity, isMax = true) {
     if (this.isFinal || depth === 0) {
       this.enableStats && this.stats.abCut.eva++
-      let socre = this.zobrist.get()
-      if (socre === undefined) {
-        // socre = evaluate(this.node, !isMax)
-        socre = this.evaluate2()
-        this.zobrist.set(socre)
+      let score = this.zobrist.get()
+      if (score === undefined) {
+        // score = evaluate(this.node, !isMax)
+        score = this.evaluate2(kill)
+        this.zobrist.set(score)
         this.enableStats && this.stats.zobrist.miss++
       } else {
         this.enableStats && this.stats.zobrist.hit++
       }
-      return [socre, null]
+      return [score, null]
     }
-    let allNextPosition = this.getAllOptimalNextStep()
-    const orderedPoints = this.orderPoints(allNextPosition, isMax ? Gobang.max : Gobang.min)
-    allNextPosition = orderedPoints
+    const orderedPoints = this.orderPoints(this.getAllOptimalNextStep(), isMax ? MAX : MIN, kill, depth)
+    // if (kill && orderedPoints.length) console.warn(orderedPoints)
     if (isMax) {
       let val = -Infinity
-      let nextPosition = allNextPosition && allNextPosition[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
-      for (const childPosition of allNextPosition) {
+      let nextPosition = orderedPoints && orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
+      for (const childPosition of orderedPoints) {
         this.put(childPosition, max)
-        const childVal = this.minimax(depth - 1, alpha, beta, !isMax)[0]
+        const childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
         this.rollback()
         if (childVal > val) {
           val = childVal
@@ -243,10 +253,10 @@ export class Gobang {
       return [val, nextPosition]
     } else {
       let val = Infinity
-      let nextPosition = allNextPosition && allNextPosition[0]
-      for (const childPosition of allNextPosition) {
+      let nextPosition = orderedPoints && orderedPoints[0]
+      for (const childPosition of orderedPoints) {
         this.put(childPosition, min)
-        const childVal = this.minimax(depth - 1, alpha, beta, !isMax)[0]
+        const childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
         this.rollback()
         if (childVal < val) {
           val = childVal
@@ -322,32 +332,32 @@ export class Gobang {
     // // 横
     // for (let a = -4; a <= 4; a++) {
     //   if (centerJ + a >= minJ && centerJ + a <= maxJ) rstOld[0].push(this.node[centerI][centerJ + a])
-    //   else rstOld[0].push(Gobang.wall)
+    //   else rstOld[0].push(wall)
     // }
     // // 竖
     // for (let a = -4; a <= 4; a++) {
     //   if (centerI + a >= minI && centerI + a <= maxI) rstOld[1].push(this.node[centerI + a][centerJ])
-    //   else rstOld[1].push(Gobang.wall)
+    //   else rstOld[1].push(wall)
     // }
     // // 左斜
     // for (let a = 4; a > 0; a--) {
     //   if (centerI + a <= maxI && centerJ - a >= minJ) rstOld[2].push(this.node[centerI + a][centerJ - a])
-    //   else rstOld[2].push(Gobang.wall)
+    //   else rstOld[2].push(wall)
     // }
     // rstOld[2].push(this.node[centerI][centerJ])
     // for (let a = 1; a <= 4; a++) {
     //   if (centerI - a >= minI && centerJ + a <= maxJ) rstOld[2].push(this.node[centerI - a][centerJ + a])
-    //   else rstOld[2].push(Gobang.wall)
+    //   else rstOld[2].push(wall)
     // }
     // // 右斜
     // for (let a = 4; a > 0; a--) {
     //   if (centerI - a >= minI && centerJ - a >= minJ) rstOld[3].push(this.node[centerI - a][centerJ - a])
-    //   else rstOld[3].push(Gobang.wall)
+    //   else rstOld[3].push(wall)
     // }
     // rstOld[3].push(this.node[centerI][centerJ])
     // for (let a = 1; a <= 4; a++) {
     //   if (centerI + a <= maxI && centerJ + a <= maxJ) rstOld[3].push(this.node[centerI + a][centerJ + a])
-    //   else rstOld[3].push(Gobang.wall)
+    //   else rstOld[3].push(wall)
     // }
     // if (rstOld[0].join() != rst[0].join()) console.log('横', centerI, centerJ, rstOld[0], rst[0])
     // if (rstOld[1].join() != rst[1].join()) console.log('竖', centerI, centerJ, rstOld[1], rst[1])
@@ -392,28 +402,25 @@ export class Gobang {
   }
 
   // i,j 米字线上的点都需要更新
-  updateFourLineSocre(i, j) {
+  updateFourLineScore(i, j) {
     const positionsInFourDirection = this.getPositionsInFourDirection(i, j)
     // console.log(fourLinePoints)
     for (let a = 0; a < positionsInFourDirection.length; a++) {
-      this.updatePointSocre(positionsInFourDirection[a])
+      this.updatePointScore(positionsInFourDirection[a])
     }
   }
 
   //
-  updatePointSocre(position) {
+  updatePointScore(position) {
     const [i, j] = position
-    // this.minPointsSocre[i][j] = this.evaPoint(i, j, Gobang.min)
-    // this.maxPointsSocre[i][j] = this.evaPoint(i, j, Gobang.max)
-    // return
     if (this.getChess(i, j) !== EMPTY) {
-      this.maxPointsSocre[i][j] = 0
-      this.minPointsSocre[i][j] = 0
+      this.maxPointsScore[i][j] = 0
+      this.minPointsScore[i][j] = 0
     } else {
-      // console.log(position, this.maxPointsSocre)
+      // console.log(position, this.maxPointsScore)
       // 这里 evaPoint 的 getChessInFourDirection 重复, 可以优化
-      this.minPointsSocre[i][j] = this.evaPoint(i, j, Gobang.min)
-      this.maxPointsSocre[i][j] = this.evaPoint(i, j, Gobang.max)
+      this.minPointsScore[i][j] = this.evaPoint(i, j, MIN)
+      this.maxPointsScore[i][j] = this.evaPoint(i, j, MAX)
     }
   }
 
@@ -423,23 +430,23 @@ export class Gobang {
    */
   evaPoint(i, j, role) {
     const chessInFourDirection = this.getChessInFourDirection(i, j)
-    const chess = role === Gobang.max ? Gobang.max : Gobang.min
-    const block = role === Gobang.max ? Gobang.min : Gobang.max
-    const countFn = countLine(chess, block, Gobang.wall)
+    const chess = role === MAX ? MAX : MIN
+    const block = role === MAX ? MIN : MAX
+    const countFn = countLine(chess, block, WALL)
     let rst = 0
     // this.enableLog && console.log({ chessInFourDirection })
     for (let a = 0; a < 4; a++) {
       const count = countFn(chessInFourDirection[a])
       // this.enableLog && console.log(count, chessInFourDirection[a])
-      const socre = countLineSocre[count]
-      rst += socre || 0
+      const score = countLineScore[count]
+      rst += score || 0
     }
     // console.log(rst)
     return rst
   }
 
   // 优先返回己方能获胜的点, 己方不能获胜时防止对方获胜
-  orderPoints(points, role) {
+  orderPoints(points, role, kill, depth) {
     let max5 = []
     let min5 = []
     let max4 = []
@@ -460,25 +467,27 @@ export class Gobang {
     for (let a = 0; a < points.length; a++) {
       const point = points[a]
       const [i, j] = point
-      const maxSocre = this.maxPointsSocre[i][j]
+      const maxScore = this.maxPointsScore[i][j]
       // 这里 if-else 顺序很重要, 一定要是`分大`的在前, 不然会漏掉点
-      if (maxSocre >= Socre.live5) max5.push(point)
-      else if (maxSocre >= Socre.live4) max4.push(point)
-      else if (maxSocre >= Socre.dead4 + Socre.live3) maxMore3.push(point)
-      else if (maxSocre >= Socre.dead4) maxDead4.push(point)
-      else if (maxSocre >= Socre.live3) max3.push(point)
-      else if (maxSocre >= 2 * Socre.live2) maxMore2.push(point)
-      else if (maxSocre >= Socre.live2) max2.push(point)
+      if (maxScore >= Score.live5) max5.push(point)
+      else if (maxScore >= Score.live4) max4.push(point)
+      // else if (maxScore >= Score.dead4 + Score.live3) maxMore3.push(point)
+      else if (maxScore >= Score.dead4) maxDead4.push(point)
+      else if (maxScore >= 2 * Score.live3) maxMore3.push(point)
+      else if (maxScore >= Score.live3) max3.push(point)
+      else if (maxScore >= 2 * Score.live2) maxMore2.push(point)
+      else if (maxScore >= Score.live2) max2.push(point)
       else maxOtherNoMatter.push(point)
 
-      const minSocre = this.minPointsSocre[i][j]
-      if (minSocre >= Socre.live5) min5.push(point)
-      else if (minSocre >= Socre.live4) min4.push(point)
-      else if (minSocre >= Socre.dead4 + Socre.live3) minMore3.push(point)
-      else if (minSocre >= Socre.dead4) minDead4.push(point)
-      else if (minSocre >= Socre.live3) min3.push(point)
-      else if (minSocre >= 2 * Socre.live2) minMore2.push(point)
-      else if (minSocre >= Socre.live2) min2.push(point)
+      const minScore = this.minPointsScore[i][j]
+      if (minScore >= Score.live5) min5.push(point)
+      else if (minScore >= Score.live4) min4.push(point)
+      // else if (minScore >= Score.dead4 + Score.live3) minMore3.push(point)
+      else if (minScore >= Score.dead4) minDead4.push(point)
+      else if (minScore >= 2 * Score.live3) minMore3.push(point)
+      else if (minScore >= Score.live3) min3.push(point)
+      else if (minScore >= 2 * Score.live2) minMore2.push(point)
+      else if (minScore >= Score.live2) min2.push(point)
       else minOtherNoMatter.push(point)
     }
 
@@ -495,11 +504,17 @@ export class Gobang {
      * 对方Dead4
      */
     let rst = []
-    if (role === Gobang.max) {
+    if (role === MAX) {
       // console.log({ max5, min5, max4, min4 })
       if (max5.length) return max5
-      if (min5.length) return min5
+      // 算杀第一步不能是防守杀招
+      // 这样思考:
+      // 如果第一步是防守杀招, 则搜索程序变成了对方的算杀, 也就是说搜索结果是基于对手连续进攻形成的
+      // 如果对方不连续进攻呢? 我方还有机会么:) ,
+      // 其实搜索过程中也不应该出现防守, 和第一步一样的道理
+      if (min5.length && !kill) return min5
       if (max4.length) return max4
+      if (kill) return maxDead4.concat(!min4.length ? maxMore3 : [])
       if (min4.length) return min4
       if (maxMore3.length) return maxMore3
       if (minMore3.length) return minMore3
@@ -517,6 +532,8 @@ export class Gobang {
       if (min5.length) return min5
       if (max5.length) return max5
       if (min4.length) return min4
+      // 算杀时, 需要考虑对手防守且进攻的棋么?
+      if (kill) return minDead4.concat(!max4.length ? minMore3 : [])
       if (max4.length) return max4
       if (minMore3.length) return minMore3
       if (maxMore3.length) return maxMore3
@@ -533,21 +550,22 @@ export class Gobang {
     }
     // return points
     rst.length !== points.length && console.log(`rst.length !== points.length`)
-    return rst.length <= Gobang.genLimit ? rst : rst.slice(0, Gobang.genLimit)
+    return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
   }
 
-  evaluate2() {
+  evaluate2(kill) {
     const winner = this.winner
-    if (winner === Gobang.max) return Socre.live5 * 10
-    else if (winner === Gobang.min) return -Socre.live5 * 10
-    let maxSocre = 0
-    let minSocre = 0
+    if (winner === MAX) return Score.live5 * 10
+    else if (winner === MIN) return -Score.live5 * 10
+    if (kill) return 0
+    let maxScore = 0
+    let minScore = 0
     for (let i = 0; i < boardLength; i++)
       for (let j = 0; j < boardLength; j++) {
-        maxSocre += this.maxPointsSocre[i][j]
-        minSocre += this.minPointsSocre[i][j]
+        maxScore += this.maxPointsScore[i][j]
+        minScore += this.minPointsScore[i][j]
       }
-    return maxSocre - minSocre * (this.firstHand === MIN ? 2 : 1.5)
+    return maxScore - minScore * (this.firstHand === MIN ? 2 : 1.5)
   }
 
   get winner() {
@@ -588,7 +606,7 @@ export class Gobang {
     // AB剪枝
     this.stats = {
       abCut: {
-        all: Gobang.genLimit ** Gobang.defaultDepth,
+        all: this.genLimit ** this.seekDepth,
         eva: 0,
         cut: 0,
         toString() {
