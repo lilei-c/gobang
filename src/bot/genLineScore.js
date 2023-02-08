@@ -9,22 +9,28 @@ const d4 = 2 ** 14
 const l4 = 2 ** 16
 const l5 = 2 ** 18
 
-const getD2 = (x) => x & 0b1111
-const getL2 = (x) => (x & 0b11110000) >> 4
-const getD3 = (x) => (x & 0b111100000000) >> 8
-const getL3 = (x) => (x & 0b11000000000000) >> 12
-const getD4 = (x) => (x & 0b1100000000000000) >> 14
-const getL4 = (x) => (x & 0b110000000000000000) >> 16
-const getL5 = (x) => (x & 0b11000000000000000000) >> 18
+const getPointMode = (x) => {
+  return {
+    d2: x & 0b1111,
+    l2: (x & 0b11110000) >> 4,
+    d3: (x & 0b111100000000) >> 8,
+    l3: (x & 0b11000000000000) >> 12,
+    d4: (x & 0b1100000000000000) >> 14,
+    l4: (x & 0b110000000000000000) >> 16,
+    l5: (x & 0b11000000000000000000) >> 18,
+  }
+}
 
+// 这个分数是指, `假如`在某个位置落子后, 该位置能获得的分数
 const Score = {
-  dead2: 1,
-  dead3: 10,
-  live2: 100,
-  live3: 1500,
-  dead4: 2000,
-  live4: 100000,
-  live5: 1000000,
+  /**/ d2: 1,
+  /**/ d3: 5,
+  /**/ d4: 200,
+  /**/ l2: 10,
+  /**/ l3: 120,
+  /**/ l4: 1000,
+  /**/ l5: 10000,
+  /**/ win: 100000,
 }
 
 //
@@ -74,24 +80,16 @@ const isLive2 = (x) => /^0+10{0,1}10+$/.test(x) && x.length > 5
 const isLive3 = (x) => [/010110/, /011010/, /01110/, /1010101/].some((t) => t.test(x))
 const isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) => t.test(x))
 const is5 = (x) => /1{5}/.test(x)
-const countLineScore = []
-allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.dead2) && (countLineScore[+`0b${x}`] = Score.dead2))
-allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.dead3) && (countLineScore[+`0b${x}`] = Score.dead3))
-allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.dead4) && (countLineScore[+`0b${x}`] = Score.dead4))
-allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.live2) && (countLineScore[+`0b${x}`] = Score.live2))
-allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.live3) && (countLineScore[+`0b${x}`] = Score.live3))
-allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.live4) && (countLineScore[+`0b${x}`] = Score.live4))
-allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.live5) && (countLineScore[+`0b${x}`] = Score.live5))
 
 // 映射 棋型count -> 棋型bit
-const countLineScore2 = []
-allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.dead2) && (countLineScore2[+`0b${x}`] = d2))
-allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.dead3) && (countLineScore2[+`0b${x}`] = d3))
-allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.dead4) && (countLineScore2[+`0b${x}`] = d4))
-allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.live2) && (countLineScore2[+`0b${x}`] = l2))
-allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.live3) && (countLineScore2[+`0b${x}`] = l3))
-allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.live4) && (countLineScore2[+`0b${x}`] = l4))
-allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.live5) && (countLineScore2[+`0b${x}`] = l5))
+const countLineScore = []
+allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.d2) && (countLineScore[+`0b${x}`] = d2))
+allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.d3) && (countLineScore[+`0b${x}`] = d3))
+allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.d4) && (countLineScore[+`0b${x}`] = d4))
+allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.l2) && (countLineScore[+`0b${x}`] = l2))
+allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.l3) && (countLineScore[+`0b${x}`] = l3))
+allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.l4) && (countLineScore[+`0b${x}`] = l4))
+allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.l5) && (countLineScore[+`0b${x}`] = l5))
 
 console.log(
   '未构成棋型的组合, 这一部分已经验证',
@@ -109,6 +107,6 @@ Object.keys(Score).forEach((m) => {
   )
 })
 
-console.log({ countLineScore, countLineScore2 })
+console.log({ countLineScore })
 
-export { countLineScore, countLineScore2, Score, countLine, getD2, getL2, getD3, getL3, getD4, getL4, getL5 }
+export { countLineScore, Score, countLine, getPointMode }

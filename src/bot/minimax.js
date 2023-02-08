@@ -1,17 +1,5 @@
 import { boardLength, boardCenter, max, min } from './const'
-import {
-  countLine,
-  countLineScore,
-  countLineScore2,
-  Score,
-  getD2,
-  getL2,
-  getD3,
-  getL3,
-  getD4,
-  getL4,
-  getL5,
-} from './genLineScore'
+import { countLine, countLineScore, Score, getPointMode } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
@@ -33,8 +21,8 @@ export class Gobang {
     this.enableStats = true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 40 // 启发式搜索, 选取节点数
-    this.seekDepth = 6
+    this.genLimit = 60 // 启发式搜索, 选取节点数
+    this.seekDepth = 4
     this.kilSeeklDepth = 21
   }
   static MAX = MAX
@@ -143,11 +131,11 @@ export class Gobang {
       console.timeEnd('thinking kill')
     }
     // 前几个落子剪枝效率不高, 搜索层数少点
-    if (score && score[0] >= Score.live5) {
+    if (score && score[0] >= Score.win) {
       console.warn('算杀成功 :)')
     } else {
       console.time('thinking')
-      score = this.minimax(this.stack.length < 4 ? 4 : this.seekDepth)
+      score = this.minimax(this.stack.length < 6 ? 4 : this.seekDepth)
       console.timeEnd('thinking')
     }
     console.log({ score })
@@ -334,49 +322,6 @@ export class Gobang {
     const rr8 = centerI <= 11 ? (rr >> (2 * (11 - centerI))) & 0b11 : 0b11
     const rr9 = centerI <= 10 ? (rr >> (2 * (10 - centerI))) & 0b11 : 0b11
     rst[3] = [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
-
-    // // 旧数据结构, 顺便用于测试
-    // let rstOld = [[], [], [], []]
-    // const minI = centerI - 4 > 0 ? centerI - 4 : 0
-    // const maxI = centerI + 4 < boardLength - 1 ? centerI + 4 : boardLength - 1
-    // const minJ = centerJ - 4 > 0 ? centerJ - 4 : 0
-    // const maxJ = centerJ + 4 < boardLength - 1 ? centerJ + 4 : boardLength - 1
-    // // 横
-    // for (let a = -4; a <= 4; a++) {
-    //   if (centerJ + a >= minJ && centerJ + a <= maxJ) rstOld[0].push(this.node[centerI][centerJ + a])
-    //   else rstOld[0].push(wall)
-    // }
-    // // 竖
-    // for (let a = -4; a <= 4; a++) {
-    //   if (centerI + a >= minI && centerI + a <= maxI) rstOld[1].push(this.node[centerI + a][centerJ])
-    //   else rstOld[1].push(wall)
-    // }
-    // // 左斜
-    // for (let a = 4; a > 0; a--) {
-    //   if (centerI + a <= maxI && centerJ - a >= minJ) rstOld[2].push(this.node[centerI + a][centerJ - a])
-    //   else rstOld[2].push(wall)
-    // }
-    // rstOld[2].push(this.node[centerI][centerJ])
-    // for (let a = 1; a <= 4; a++) {
-    //   if (centerI - a >= minI && centerJ + a <= maxJ) rstOld[2].push(this.node[centerI - a][centerJ + a])
-    //   else rstOld[2].push(wall)
-    // }
-    // // 右斜
-    // for (let a = 4; a > 0; a--) {
-    //   if (centerI - a >= minI && centerJ - a >= minJ) rstOld[3].push(this.node[centerI - a][centerJ - a])
-    //   else rstOld[3].push(wall)
-    // }
-    // rstOld[3].push(this.node[centerI][centerJ])
-    // for (let a = 1; a <= 4; a++) {
-    //   if (centerI + a <= maxI && centerJ + a <= maxJ) rstOld[3].push(this.node[centerI + a][centerJ + a])
-    //   else rstOld[3].push(wall)
-    // }
-    // if (rstOld[0].join() != rst[0].join()) console.log('横', centerI, centerJ, rstOld[0], rst[0])
-    // if (rstOld[1].join() != rst[1].join()) console.log('竖', centerI, centerJ, rstOld[1], rst[1])
-    // if (rstOld[2].join() != rst[2].join() && rstOld[2].join() != rst[2].reverse().join())
-    //   console.log('左斜', centerI, centerJ, rstOld[2], rst[2])
-    // if (rstOld[3].join() != rst[3].join() && rstOld[3].join() != rst[3].reverse().join())
-    //   console.log('右斜', centerI, centerJ, rstOld[3], rst[3])
     return rst
   }
 
@@ -488,14 +433,8 @@ export class Gobang {
     for (let a = 0; a < points.length; a++) {
       const point = points[a]
       const [i, j] = point
-      const maxScore = this.maxPointsScore[i][j]
-      const l5 = getL5(maxScore)
-      const l4 = getL4(maxScore)
-      const d4 = getD4(maxScore)
-      const l3 = getL3(maxScore)
-      const d3 = getD3(maxScore)
-      const l2 = getL2(maxScore)
-      const d2 = getD2(maxScore)
+      const pointMode = getPointMode(this.maxPointsScore[i][j])
+      const { l5, l4, d4, l3, d3, l2, d2 } = pointMode
       if (l5) maxL5.push(point)
       else if (l4) maxL4.push(point)
       else if (l3 && d4) maxD4L3.push(point)
@@ -514,14 +453,8 @@ export class Gobang {
     for (let a = 0; a < points.length; a++) {
       const point = points[a]
       const [i, j] = point
-      const minScore = this.minPointsScore[i][j]
-      const l5 = getL5(minScore)
-      const l4 = getL4(minScore)
-      const d4 = getD4(minScore)
-      const l3 = getL3(minScore)
-      const d3 = getD3(minScore)
-      const l2 = getL2(minScore)
-      const d2 = getD2(minScore)
+      const pointMode = getPointMode(this.minPointsScore[i][j])
+      const { l5, l4, d4, l3, d3, l2, d2 } = pointMode
       if (l5) minL5.push(point)
       else if (l4) minL4.push(point)
       else if (l3 && d4) minD4L3.push(point)
@@ -605,19 +538,73 @@ export class Gobang {
     }
   }
 
+  // 这是个不准确的评估函数
+  // 它根据空位评分来的, 然而空位评分只是预估, 是假设在空位落子, 然而未必有机会落子, 与 真实局势 相差甚远
+  // 重新设计时考虑从四个棋盘获取真实局势
   evaluate(kill) {
     const winner = this.winner
-    if (winner === MAX) return Score.live5 * 10
-    else if (winner === MIN) return -Score.live5 * 10
-    if (kill) return 0
-    let maxScore = 0
-    let minScore = 0
+    if (winner === MAX) return Score.win
+    else if (winner === MIN) return -Score.win
+    if (kill) return 0 // 算杀结果必须是5连, 否则算杀失败
+
+    let maxL5 = 0
+    let maxL4 = 0
+    let maxD4 = 0
+    let maxL3 = 0
+    let maxD3 = 0
+    let maxL2 = 0
+    let maxD2 = 0
+    //
+    let minL5 = 0
+    let minL4 = 0
+    let minD4 = 0
+    let minL3 = 0
+    let minD3 = 0
+    let minL2 = 0
+    let minD2 = 0
     for (let i = 0; i < boardLength; i++)
       for (let j = 0; j < boardLength; j++) {
-        maxScore += this.maxPointsScore[i][j]
-        minScore += this.minPointsScore[i][j]
+        const maxMode = getPointMode(this.maxPointsScore[i][j])
+        maxL5 += maxMode.l5
+        maxL4 += maxMode.l4
+        maxD4 += maxMode.d4
+        maxL3 += maxMode.l3
+        maxD3 += maxMode.d3
+        maxL2 += maxMode.l2
+        maxD2 += maxMode.d2
+        const minMode = getPointMode(this.minPointsScore[i][j])
+        minL5 += minMode.l5
+        minL4 += minMode.l4
+        minD4 += minMode.d4
+        minL3 += minMode.l3
+        minD3 += minMode.d3
+        minL2 += minMode.l2
+        minD2 += minMode.d2
       }
-    return maxScore - minScore * (this.firstHand === MIN ? 2 : 1.5)
+
+    // // 搜索偶数层, 最后一步是对手下棋
+    // if ((this.seekDepth & 1) === 0) {
+    // } else {
+    //   // 搜索奇数层, 最后一步是己方下棋, 需考虑对手的后续走棋
+    // }
+    const maxScore =
+      Score.l5 * maxL5 +
+      Score.l4 * maxL4 +
+      Score.d4 * maxD4 +
+      Score.l3 * maxL3 +
+      Score.d3 * maxD3 +
+      Score.l2 * maxL2 +
+      Score.d2 * maxD2
+    const minScore =
+      Score.l5 * minL5 +
+      Score.l4 * minL4 +
+      Score.d4 * minD4 +
+      Score.l3 * minL3 +
+      Score.d3 * minD3 +
+      Score.l2 * minL2 +
+      Score.d2 * minD2
+    // 后手时, 加强防守
+    return maxScore - minScore * (this.firstHand === MIN ? 1.1 : 1)
   }
 
   get winner() {
