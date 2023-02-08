@@ -1,6 +1,17 @@
 import { boardLength, boardCenter, max, min } from './const'
-import { evaluate } from './evaluate.js'
-import { countLine, countLineScore, Score } from './genLineScore'
+import {
+  countLine,
+  countLineScore,
+  countLineScore2,
+  Score,
+  getD2,
+  getL2,
+  getD3,
+  getL3,
+  getD4,
+  getL4,
+  getL5,
+} from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
@@ -22,7 +33,7 @@ export class Gobang {
     this.enableStats = true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 20 // 启发式搜索, 选取节点数
+    this.genLimit = 40 // 启发式搜索, 选取节点数
     this.seekDepth = 6
     this.kilSeeklDepth = 21
   }
@@ -79,12 +90,6 @@ export class Gobang {
       }
       this.node4[rowsIndex] = rst
     }
-  }
-  printNode() {
-    console.log(this.node1.map((x) => x.toString(2)))
-    console.log(this.node2.map((x) => x.toString(2)))
-    console.log(this.node3.map((x) => x.toString(2)))
-    console.log(this.node4.map((x) => x.toString(2)))
   }
 
   put(position, role) {
@@ -148,7 +153,7 @@ export class Gobang {
     console.log({ score })
     this.put(score[1], MAX)
     this.logStats()
-    console.log('score', this.evaluate2())
+    console.log('score', this.evaluate())
     return score
   }
 
@@ -156,7 +161,7 @@ export class Gobang {
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
     this.put([i, j], MIN)
-    console.log('score', this.evaluate2())
+    console.log('score', this.evaluate())
     return true
   }
 
@@ -218,26 +223,24 @@ export class Gobang {
 
   minimax(depth, kill, alpha = -Infinity, beta = Infinity, isMax = true) {
     if (this.isFinal || depth === 0) {
-      this.enableStats && this.stats.abCut.eva++
-      let score = this.zobrist.get()
-      if (score === undefined) {
-        // score = evaluate(this.node, !isMax)
-        score = this.evaluate2(kill)
-        this.zobrist.set(score)
-        this.enableStats && this.stats.zobrist.miss++
-      } else {
-        this.enableStats && this.stats.zobrist.hit++
-      }
+      const score = this.evaluate(kill)
       return [score, null]
     }
-    const orderedPoints = this.orderPoints(this.getAllOptimalNextStep(), isMax ? MAX : MIN, kill, depth)
-    // if (kill && orderedPoints.length) console.warn(orderedPoints)
+    const orderedPoints = this.orderPoints(this.getAllOptimalNextStep(), isMax ? MAX : MIN, kill)
     if (isMax) {
       let val = -Infinity
       let nextPosition = orderedPoints && orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
       for (const childPosition of orderedPoints) {
         this.put(childPosition, max)
-        const childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
+        this.enableStats && this.stats.abCut.eva++
+        let childVal = this.zobrist.get()
+        if (childVal === undefined) {
+          childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
+          this.zobrist.set(childVal)
+          this.enableStats && this.stats.zobrist.miss++
+        } else {
+          this.enableStats && this.stats.zobrist.hit++
+        }
         this.rollback()
         if (childVal > val) {
           val = childVal
@@ -256,7 +259,15 @@ export class Gobang {
       let nextPosition = orderedPoints && orderedPoints[0]
       for (const childPosition of orderedPoints) {
         this.put(childPosition, min)
-        const childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
+        this.enableStats && this.stats.abCut.eva++
+        let childVal = this.zobrist.get()
+        if (childVal === undefined) {
+          childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
+          this.zobrist.set(childVal)
+          this.enableStats && this.stats.zobrist.miss++
+        } else {
+          this.enableStats && this.stats.zobrist.hit++
+        }
         this.rollback()
         if (childVal < val) {
           val = childVal
@@ -416,12 +427,11 @@ export class Gobang {
     const [i, j] = position
     if (this.getChess(i, j) !== EMPTY) {
       this.maxPointsScore[i][j] = 0
-      this.minPointsScore[i][j] = 0
+      this.maxPointsScore[i][j] = 0
     } else {
-      // console.log(position, this.maxPointsScore)
       // 这里 evaPoint 的 getChessInFourDirection 重复, 可以优化
-      this.minPointsScore[i][j] = this.evaPoint(i, j, MIN)
       this.maxPointsScore[i][j] = this.evaPoint(i, j, MAX)
+      this.minPointsScore[i][j] = this.evaPoint(i, j, MIN)
     }
   }
 
@@ -435,126 +445,167 @@ export class Gobang {
     const block = role === MAX ? MIN : MAX
     const countFn = countLine(chess, block, WALL)
     let rst = 0
-    // this.enableLog && console.log({ chessInFourDirection })
     for (let a = 0; a < 4; a++) {
       const count = countFn(chessInFourDirection[a])
-      // this.enableLog && console.log(count, chessInFourDirection[a])
       const score = countLineScore[count]
       rst += score || 0
     }
-    // console.log(rst)
     return rst
   }
 
-  // 优先返回己方能获胜的点, 己方不能获胜时防止对方获胜
-  orderPoints(points, role, kill, depth) {
-    let max5 = []
-    let min5 = []
-    let max4 = []
-    let min4 = []
-    let maxMore3 = []
-    let minMore3 = []
-    let max3 = []
-    let min3 = []
-    let maxDead4 = []
-    let minDead4 = []
-    let maxMore2 = []
-    let minMore2 = []
-    let max2 = []
-    let min2 = []
+  orderPoints(points, role, kill) {
+    let maxL5 = []
+    let minL5 = []
+    let maxL4 = []
+    let minL4 = []
+    let maxD4 = []
+    let minD4 = []
+    let maxL3 = []
+    let minL3 = []
+    let maxD3 = []
+    let minD3 = []
+    let maxL2 = []
+    let minL2 = []
+    let maxD2 = []
+    let minD2 = []
+    // 不构成棋型的点
     let maxOtherNoMatter = []
     let minOtherNoMatter = []
+    // 双三
+    let maxDoubleL3 = []
+    let minDoubleL3 = []
+    // 活三 + 冲四
+    let maxD4L3 = []
+    let minD4L3 = []
+    // 两个活二
+    let maxDoubleL2 = []
+    let minDoubleL2 = []
+    // 2个以上活二
+    let maxMoreL2 = []
+    let minMoreL2 = []
 
+    // max 棋型统计
     for (let a = 0; a < points.length; a++) {
       const point = points[a]
       const [i, j] = point
       const maxScore = this.maxPointsScore[i][j]
-      // 这里 if-else 顺序很重要, 一定要是`分大`的在前, 不然会漏掉点
-      if (maxScore >= Score.live5) max5.push(point)
-      else if (maxScore >= Score.live4) max4.push(point)
-      // else if (maxScore >= Score.dead4 + Score.live3) maxMore3.push(point)
-      else if (maxScore >= Score.dead4) maxDead4.push(point)
-      else if (maxScore >= 2 * Score.live3) maxMore3.push(point)
-      else if (maxScore >= Score.live3) max3.push(point)
-      else if (maxScore >= 2 * Score.live2) maxMore2.push(point)
-      else if (maxScore >= Score.live2) max2.push(point)
+      const l5 = getL5(maxScore)
+      const l4 = getL4(maxScore)
+      const d4 = getD4(maxScore)
+      const l3 = getL3(maxScore)
+      const d3 = getD3(maxScore)
+      const l2 = getL2(maxScore)
+      const d2 = getD2(maxScore)
+      if (l5) maxL5.push(point)
+      else if (l4) maxL4.push(point)
+      else if (l3 && d4) maxD4L3.push(point)
+      else if (l3 > 1) maxDoubleL3.push(point)
+      else if (l2 > 2) maxMoreL2.push(point)
+      else if (l3) maxL3.push(point)
+      else if (l2 > 1) maxDoubleL2.push(point)
+      else if (d4) maxD4.push(point)
+      else if (l2) maxL2.push(point)
+      else if (d3) maxD3.push(point)
+      else if (d2) maxD2.push(point)
       else maxOtherNoMatter.push(point)
+    }
 
+    // min 棋型统计
+    for (let a = 0; a < points.length; a++) {
+      const point = points[a]
+      const [i, j] = point
       const minScore = this.minPointsScore[i][j]
-      if (minScore >= Score.live5) min5.push(point)
-      else if (minScore >= Score.live4) min4.push(point)
-      // else if (minScore >= Score.dead4 + Score.live3) minMore3.push(point)
-      else if (minScore >= Score.dead4) minDead4.push(point)
-      else if (minScore >= 2 * Score.live3) minMore3.push(point)
-      else if (minScore >= Score.live3) min3.push(point)
-      else if (minScore >= 2 * Score.live2) minMore2.push(point)
-      else if (minScore >= Score.live2) min2.push(point)
+      const l5 = getL5(minScore)
+      const l4 = getL4(minScore)
+      const d4 = getD4(minScore)
+      const l3 = getL3(minScore)
+      const d3 = getD3(minScore)
+      const l2 = getL2(minScore)
+      const d2 = getD2(minScore)
+      if (l5) minL5.push(point)
+      else if (l4) minL4.push(point)
+      else if (l3 && d4) minD4L3.push(point)
+      else if (l3 > 1) minDoubleL3.push(point)
+      else if (l2 > 2) minMoreL2.push(point)
+      else if (l3) minL3.push(point)
+      else if (l2 > 1) minDoubleL2.push(point)
+      else if (d4) minD4.push(point)
+      else if (l2) minL2.push(point)
+      else if (d3) minD3.push(point)
+      else if (d2) minD2.push(point)
       else minOtherNoMatter.push(point)
     }
 
-    /** 优先级
-     * 己方连5
-     * 对方连5
-     * 己方活四
-     * 对方活四
-     * 己方双三
-     * 对方双三
-     * 己方活二
-     * 对方活二
-     * 己方Dead4  dead4  需要考虑啥?
-     * 对方Dead4
-     */
-    let rst = []
+    // 算杀只考虑连续进攻, 不考虑防守
+    // 如果防守, 则搜索程序变成了对方的算杀, 也就是说`搜索结果`是基于对手连续进攻形成的
+    // 如果对方不连续进攻呢? 我方还有机会么:)
     if (role === MAX) {
-      // console.log({ max5, min5, max4, min4 })
-      if (max5.length) return max5
-      // 算杀第一步不能是防守杀招
-      // 这样思考:
-      // 如果第一步是防守杀招, 则搜索程序变成了对方的算杀, 也就是说搜索结果是基于对手连续进攻形成的
-      // 如果对方不连续进攻呢? 我方还有机会么:) ,
-      // 其实搜索过程中也不应该出现防守, 和第一步一样的道理
-      if (min5.length && !kill) return min5
-      if (max4.length) return max4
-      if (kill) return maxDead4.concat(!min4.length ? maxMore3 : [])
-      if (min4.length) return min4
-      if (maxMore3.length) return maxMore3
-      if (minMore3.length) return minMore3
-      rst = rst
-        .concat(max3)
-        // .concat(min3)
-        .concat(maxMore2)
-        // .concat(minMore2)
-        .concat(maxDead4)
-        // .concat(minDead4)
-        .concat(max2)
-        // .concat(min2)
+      if (kill) {
+        if (maxL5.length) return maxL5
+        if (minL5.length) return []
+        if (maxL4.length) return maxL4
+        if (minL4.length) return []
+        if (maxD4L3.length) return maxD4L3
+        if (minD4L3.length) return []
+        if (maxDoubleL3.length && !minD4.length) return maxDoubleL3
+        return []
+      }
+      // console.log({ kill, role, maxL5, minL5, maxL4, maxD4L3, minL4, minD4L3, maxDoubleL3, minDoubleL3 })
+      if (maxL5.length) return maxL5
+      if (minL5.length) return minL5
+      if (maxL4.length) return maxL4
+      if (maxD4L3.length) return maxD4L3
+      if (minL4.length) return minL4
+      if (minD4L3.length) return minD4L3
+      if (maxDoubleL3.length) return maxDoubleL3 // 双三可考虑对方是否有冲四且拦截己方双三
+      if (minDoubleL3.length) return minDoubleL3
+      // !! 这里的顺序和选子很重要, 影响棋力和剪枝效率, 最好和评估函数保持一致
+      const rst = maxMoreL2
+        .concat(minMoreL2)
+        .concat(maxL3)
+        .concat(minL3)
+        .concat(maxDoubleL2)
+        .concat(minDoubleL2)
+        .concat(maxD4)
+        .concat(minD4)
+        .concat(maxL2)
+        .concat(minL2)
         .concat(maxOtherNoMatter)
+        .concat(maxD3)
+        .concat(minD3)
+        .concat(maxD2)
+        .concat(minD2)
+      return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
     } else {
-      if (min5.length) return min5
-      if (max5.length) return max5
-      if (min4.length) return min4
-      // 算杀时, 需要考虑对手防守且进攻的棋么?
-      if (kill) return minDead4.concat(!max4.length ? minMore3 : [])
-      if (max4.length) return max4
-      if (minMore3.length) return minMore3
-      if (maxMore3.length) return maxMore3
-      rst = rst
-        .concat(min3)
-        // .concat(max3)
-        .concat(minMore2)
-        // .concat(maxMore2)
-        .concat(minDead4)
-        // .concat(maxDead4)
-        .concat(min2)
-        // .concat(max2)
+      if (minL5.length) return minL5
+      if (maxL5.length) return maxL5
+      if (minL4.length) return minL4
+      if (minD4L3.length) return minD4L3
+      if (maxL4.length) return maxL4
+      if (maxD4L3.length) return maxD4L3
+      if (minDoubleL3.length) return minDoubleL3 // 双三可考虑对方是否有冲四且拦截己方双三
+      if (maxDoubleL3.length) return maxDoubleL3
+      // !! 这里的顺序和选子很重要, 影响棋力和剪枝效率, 最好和评估函数保持一致
+      const rst = minMoreL2
+        .concat(maxMoreL2)
+        .concat(minL3)
+        .concat(maxL3)
+        .concat(minDoubleL2)
+        .concat(maxDoubleL2)
+        .concat(minD4)
+        .concat(maxD4)
+        .concat(minL2)
+        .concat(maxL2)
         .concat(minOtherNoMatter)
+        .concat(minD3)
+        .concat(maxD3)
+        .concat(minD2)
+        .concat(maxD2)
+      return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
     }
-    // return points
-    rst.length !== points.length && console.log(`rst.length !== points.length`)
-    return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
   }
 
-  evaluate2(kill) {
+  evaluate(kill) {
     const winner = this.winner
     if (winner === MAX) return Score.live5 * 10
     else if (winner === MIN) return -Score.live5 * 10
@@ -600,6 +651,13 @@ export class Gobang {
 
   get isDraw() {
     return this.isBoardFull && !this.winner
+  }
+
+  printNode() {
+    console.log(this.node1.map((x) => x.toString(2)))
+    console.log(this.node2.map((x) => x.toString(2)))
+    console.log(this.node3.map((x) => x.toString(2)))
+    console.log(this.node4.map((x) => x.toString(2)))
   }
 
   // 统计性能优化数据

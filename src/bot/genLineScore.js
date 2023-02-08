@@ -1,4 +1,23 @@
-var Score = {
+// 用 bits 记录空位棋型
+// 0b00 00 00 00 0000 0000 0000
+//   l5 l4 d4 l3   d3   l2   d2
+const d2 = 2 ** 0
+const l2 = 2 ** 4
+const d3 = 2 ** 8
+const l3 = 2 ** 12
+const d4 = 2 ** 14
+const l4 = 2 ** 16
+const l5 = 2 ** 18
+
+const getD2 = (x) => x & 0b1111
+const getL2 = (x) => (x & 0b11110000) >> 4
+const getD3 = (x) => (x & 0b111100000000) >> 8
+const getL3 = (x) => (x & 0b11000000000000) >> 12
+const getD4 = (x) => (x & 0b1100000000000000) >> 14
+const getL4 = (x) => (x & 0b110000000000000000) >> 16
+const getL5 = (x) => (x & 0b11000000000000000000) >> 18
+
+const Score = {
   dead2: 1,
   dead3: 10,
   live2: 100,
@@ -7,8 +26,10 @@ var Score = {
   live4: 100000,
   live5: 1000000,
 }
-var countLine = (chess, block, wall) => (s) => {
-  var r = 0b1
+
+//
+const countLine = (chess, block, wall) => (s) => {
+  let r = 0b1
   for (let i = 0; i < s.length; i++) {
     const val = s[i]
     if (i < 4) {
@@ -28,13 +49,15 @@ var countLine = (chess, block, wall) => (s) => {
   }
   return r
 }
-var generateAllModes = (arr = [[]], deep = 6) => {
+
+const generateAllModes = (arr = [[]], deep = 6) => {
   if (deep === 0) return arr
   let temp = []
   for (const last of arr) for (const item of [0, 1, 2]) temp.push([...last, item])
   return generateAllModes(temp, deep - 1)
 }
-var aa = generateAllModes([[]], 9)
+
+const allModes = generateAllModes([[]], 9)
   .filter((x) => x[4] == 1)
   .map(countLine(1, 2))
   .filter((x) => x.toString(2).match(/1/g)?.length > 2)
@@ -42,29 +65,41 @@ var aa = generateAllModes([[]], 9)
   .sort()
   .map((x) => x.toString(2))
 
-var obj = {}
-aa.forEach((x) => (obj[x] = null))
-var isDead2 = (x) => /10{0,1}1/.test(x)
-var isDead3 = (x) => [/111/, /1011/, /1101/, /11001/, /10011/, /10101/].some((t) => t.test(x))
-var isDead4 = (x) => [/1111/, /11011/, /11101/, /10111/].some((t) => t.test(x))
-var isLive2 = (x) => /^0+10{0,1}10+$/.test(x) && x.length > 5
-var isLive3 = (x) => [/010110/, /011010/, /01110/, /1010101/].some((t) => t.test(x))
-var isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) => t.test(x))
-var is5 = (x) => /1{5}/.test(x)
-var countLineScore = []
-aa.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.dead2) && (countLineScore[+`0b${x}`] = Score.dead2))
-aa.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.dead3) && (countLineScore[+`0b${x}`] = Score.dead3))
-aa.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.dead4) && (countLineScore[+`0b${x}`] = Score.dead4))
-aa.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.live2) && (countLineScore[+`0b${x}`] = Score.live2))
-aa.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.live3) && (countLineScore[+`0b${x}`] = Score.live3))
-aa.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.live4) && (countLineScore[+`0b${x}`] = Score.live4))
-aa.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.live5) && (countLineScore[+`0b${x}`] = Score.live5))
+const obj = {}
+allModes.forEach((x) => (obj[x] = null))
+const isDead2 = (x) => /10{0,1}1/.test(x)
+const isDead3 = (x) => [/111/, /1011/, /1101/, /11001/, /10011/, /10101/].some((t) => t.test(x))
+const isDead4 = (x) => [/1111/, /11011/, /11101/, /10111/].some((t) => t.test(x))
+const isLive2 = (x) => /^0+10{0,1}10+$/.test(x) && x.length > 5
+const isLive3 = (x) => [/010110/, /011010/, /01110/, /1010101/].some((t) => t.test(x))
+const isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) => t.test(x))
+const is5 = (x) => /1{5}/.test(x)
+const countLineScore = []
+allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.dead2) && (countLineScore[+`0b${x}`] = Score.dead2))
+allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.dead3) && (countLineScore[+`0b${x}`] = Score.dead3))
+allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.dead4) && (countLineScore[+`0b${x}`] = Score.dead4))
+allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.live2) && (countLineScore[+`0b${x}`] = Score.live2))
+allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.live3) && (countLineScore[+`0b${x}`] = Score.live3))
+allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.live4) && (countLineScore[+`0b${x}`] = Score.live4))
+allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.live5) && (countLineScore[+`0b${x}`] = Score.live5))
+
+// 映射 棋型count -> 棋型bit
+const countLineScore2 = []
+allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.dead2) && (countLineScore2[+`0b${x}`] = d2))
+allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.dead3) && (countLineScore2[+`0b${x}`] = d3))
+allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.dead4) && (countLineScore2[+`0b${x}`] = d4))
+allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.live2) && (countLineScore2[+`0b${x}`] = l2))
+allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.live3) && (countLineScore2[+`0b${x}`] = l3))
+allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.live4) && (countLineScore2[+`0b${x}`] = l4))
+allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.live5) && (countLineScore2[+`0b${x}`] = l5))
+
 console.log(
-  'no match',
+  '未构成棋型的组合, 这一部分已经验证',
   Object.keys(obj)
     .filter((x) => !obj[x])
     .map((x) => x.slice(1))
 )
+console.warn('todo: 验证以下棋型是否正确')
 Object.keys(Score).forEach((m) => {
   console.log(
     m,
@@ -73,6 +108,7 @@ Object.keys(Score).forEach((m) => {
       .map((x) => x.slice(1))
   )
 })
-console.log({ countLineScore })
 
-export { countLineScore, Score, countLine }
+console.log({ countLineScore, countLineScore2 })
+
+export { countLineScore, countLineScore2, Score, countLine, getD2, getL2, getD3, getL3, getD4, getL4, getL5 }

@@ -61,7 +61,6 @@ const Game = () => {
     chessboard.put(res.row, res.column, Chessboard.MIN)
     const done = gobang.minGo(res.row, res.column)
     // const done = gobang.minGo(i, j)
-    console.log({ done })
     if (done) {
       forceUpdate()
       setTimeout(maxGo, 0)
@@ -76,7 +75,7 @@ const Game = () => {
 
   const onStart = () => {
     startX(true)
-    gobang = new Gobang({ firstHand: Gobang.MAX })
+    gobang = new Gobang({ firstHand: Gobang.MIN })
     window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
     if (gobang.firstHand === Gobang.MAX) maxGo()
