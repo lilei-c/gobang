@@ -21,9 +21,9 @@ export class Gobang {
     this.enableStats = true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 60 // 启发式搜索, 选取节点数
+    this.genLimit = 40 // 启发式搜索, 选取节点数
     this.seekDepth = 4
-    this.kilSeeklDepth = 21
+    this.kilSeeklDepth = 15 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
   static MIN = MIN
@@ -469,18 +469,19 @@ export class Gobang {
       else minOtherNoMatter.push(point)
     }
 
-    // 算杀只考虑连续进攻, 不考虑防守
-    // 如果防守, 则搜索程序变成了对方的算杀, 也就是说`搜索结果`是基于对手连续进攻形成的
-    // 如果对方不连续进攻呢? 我方还有机会么:)
     if (role === MAX) {
       if (kill) {
+        // 算杀只考虑 max 方连续进攻, min 方不需要判断算杀
         if (maxL5.length) return maxL5
         if (minL5.length) return []
         if (maxL4.length) return maxL4
-        if (minL4.length) return []
-        if (maxD4L3.length) return maxD4L3
-        if (minD4L3.length) return []
-        if (maxDoubleL3.length && !minD4.length) return maxDoubleL3
+        if (maxD4L3.length || maxD4.length) return maxD4L3.concat(maxD4)
+        if (minL4.length) return [] // minL4
+        if (minD4L3.length) return [] //minD4L3
+        // 双三可以考虑一下
+        if (maxDoubleL3.length && !minD4.length && !minD4L3.length) return maxDoubleL3
+        // 考虑活三性能会很差
+        // if (maxL3.length) return maxL3
         return []
       }
       // console.log({ kill, role, maxL5, minL5, maxL4, maxD4L3, minL4, minD4L3, maxDoubleL3, minDoubleL3 })
@@ -604,8 +605,10 @@ export class Gobang {
       Score.l2 * minL2 +
       Score.d2 * minD2
     // 后手时, 加强防守
-    return maxScore - minScore * (this.firstHand === MIN ? 1.1 : 1)
+    return maxScore - minScore * (this.firstHand === MIN ? 2 : 1.2)
   }
+
+  evaluate2() {}
 
   get winner() {
     if (this.stack.length < 9) return null
