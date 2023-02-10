@@ -1,5 +1,5 @@
-import { boardLength, boardCenter, max, min } from './const'
-import { countLine, countLineScore, Score, getPointMode } from './genLineScore'
+import { boardLength, boardCenter } from './const'
+import { countLine, ninePointScore, Score, getPointMode } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
@@ -102,7 +102,7 @@ export class Gobang {
     if (this.stack.length < steps) return
     while (steps-- > 0) {
       const [i, j] = this.stack.pop()
-      this.zobrist.go(i, j, this.getChess(i, j) === max)
+      this.zobrist.go(i, j, this.getChess(i, j) === MAX)
       this.node[i][j] = EMPTY
 
       // 横
@@ -219,7 +219,7 @@ export class Gobang {
       let val = -Infinity
       let nextPosition = orderedPoints && orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
       for (const childPosition of orderedPoints) {
-        this.put(childPosition, max)
+        this.put(childPosition, MAX)
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
         if (childVal === undefined) {
@@ -246,7 +246,7 @@ export class Gobang {
       let val = Infinity
       let nextPosition = orderedPoints && orderedPoints[0]
       for (const childPosition of orderedPoints) {
-        this.put(childPosition, min)
+        this.put(childPosition, MIN)
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
         if (childVal === undefined) {
@@ -392,7 +392,7 @@ export class Gobang {
     let rst = 0
     for (let a = 0; a < 4; a++) {
       const count = countFn(chessInFourDirection[a])
-      const score = countLineScore[count]
+      const score = ninePointScore[count]
       rst += score || 0
     }
     return rst
@@ -568,7 +568,7 @@ export class Gobang {
       // 至少是死二
       // console.log(piece.toString(2))
       if (piece < 0b100011) return
-      const score = countLineScore[piece]
+      const score = ninePointScore[piece]
       // score && console.log(piece, piece.toString(2), score.toString(2))
       if (!score) return
       const d2 = 2 ** 0

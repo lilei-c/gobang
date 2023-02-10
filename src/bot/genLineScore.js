@@ -1,13 +1,13 @@
 // 用 bits 记录空位棋型
 // 0b00 00 00 00 0000 0000 0000
 //   l5 l4 d4 l3   d3   l2   d2
-const d2 = 2 ** 0
-const l2 = 2 ** 4
-const d3 = 2 ** 8
-const l3 = 2 ** 12
-const d4 = 2 ** 14
-const l4 = 2 ** 16
-const l5 = 2 ** 18
+const d2 = 2 ** 0 // 1
+const l2 = 2 ** 4 // 10000
+const d3 = 2 ** 8 // 100000000
+const l3 = 2 ** 12 // 1000000000000
+const d4 = 2 ** 14 // 100000000000000
+const l4 = 2 ** 16 // 10000000000000000
+const l5 = 2 ** 18 // 1000000000000000000
 
 const getPointMode = (x) => {
   return {
@@ -81,14 +81,14 @@ const isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) =
 const is5 = (x) => /1{5}/.test(x)
 
 // 映射 棋型count -> 棋型bit
-const countLineScore = []
-allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.d2) && (countLineScore[+`0b${x}`] = d2))
-allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.d3) && (countLineScore[+`0b${x}`] = d3))
-allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.d4) && (countLineScore[+`0b${x}`] = d4))
-allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.l2) && (countLineScore[+`0b${x}`] = l2))
-allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.l3) && (countLineScore[+`0b${x}`] = l3))
-allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.l4) && (countLineScore[+`0b${x}`] = l4))
-allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.l5) && (countLineScore[+`0b${x}`] = l5))
+const ninePointScore = []
+allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.d2) && (ninePointScore[+`0b${x}`] = d2))
+allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.l2) && (ninePointScore[+`0b${x}`] = l2))
+allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.d3) && (ninePointScore[+`0b${x}`] = d3))
+allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.l3) && (ninePointScore[+`0b${x}`] = l3))
+allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.d4) && (ninePointScore[+`0b${x}`] = d4))
+allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.l4) && (ninePointScore[+`0b${x}`] = l4))
+allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.l5) && (ninePointScore[+`0b${x}`] = l5))
 
 console.log(
   '未构成棋型的组合, 这一部分已经验证',
@@ -106,6 +106,6 @@ Object.keys(Score).forEach((m) => {
   )
 })
 
-console.log({ countLineScore })
+console.log({ ninePointScore })
 
-export { countLineScore, Score, countLine, getPointMode }
+export { ninePointScore, Score, countLine, getPointMode, d2, l2, d3, l3, d4, l4, l5 }
