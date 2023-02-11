@@ -55,12 +55,12 @@ const Game = () => {
     if (!start) return console.log({ start })
     if (isFinal) return console.log({ isFinal })
 
-    console.time('b1')
-    var res = Chessboard.prototype.min(chessboard, 2)
-    console.timeEnd('b1')
-    chessboard.put(res.row, res.column, Chessboard.MIN)
-    const done = gobang.minGo(res.row, res.column)
-    // const done = gobang.minGo(i, j)
+    // console.time('b1')
+    // var res = Chessboard.prototype.min(chessboard, 2)
+    // console.timeEnd('b1')
+    // chessboard.put(res.row, res.column, Chessboard.MIN)
+    // const done = gobang.minGo(res.row, res.column)
+    const done = gobang.minGo(i, j)
     if (done) {
       forceUpdate()
       setTimeout(maxGo, 0)

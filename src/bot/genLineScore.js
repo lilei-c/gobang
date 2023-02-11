@@ -1,19 +1,23 @@
-// 用 bits 记录空位棋型
-// 0b00 00 00 00 0000 0000 0000
-//   l5 l4 d4 l3   d3   l2   d2
-const d2 = 2 ** 0 // 1
-const l2 = 2 ** 4 // 10000
-const d3 = 2 ** 8 // 100000000
+// 用 bits 记录棋型
+// 0b00 00 00 00 000 000 000 000
+//   l5 l4 d4 l3  d3  l2  d2  l1
+const l1 = 2 ** 0 // 1
+const d2 = 2 ** 3 // 1000
+const l2 = 2 ** 6 // 1000000
+const l2x2 = l2 * 2
+const d3 = 2 ** 9 // 1000000000
 const l3 = 2 ** 12 // 1000000000000
 const d4 = 2 ** 14 // 100000000000000
 const l4 = 2 ** 16 // 10000000000000000
 const l5 = 2 ** 18 // 1000000000000000000
+const chessModeBit = { l1, d2, l2, d3, l3, d4, l4, l5, l2x2 }
 
 const getPointMode = (x) => {
   return {
-    d2: x & 0b1111,
-    l2: (x & 0b11110000) >> 4,
-    d3: (x & 0b111100000000) >> 8,
+    l1: x & 0b111,
+    d2: (x & 0b111000) >> 3,
+    l2: (x & 0b1111000000) >> 6,
+    d3: (x & 0b1111000000000) >> 9,
     l3: (x & 0b11000000000000) >> 12,
     d4: (x & 0b1100000000000000) >> 14,
     l4: (x & 0b110000000000000000) >> 16,
@@ -22,16 +26,19 @@ const getPointMode = (x) => {
 }
 
 const Score = {
+  /**/ l1: 10,
   /**/ d2: 10,
   /**/ d3: 100,
-  /**/ l2: 100,
-  /**/ d4: 200,
+  /**/ l2: 150,
+  /**/ l2x2: 300,
   /**/ l3: 200,
-  /**/ l4: 1000,
+  /**/ d4: 1000,
+  /**/ l4: 2000,
   /**/ l5: 10000,
   /**/ win: 100000,
 }
 
+console.warn('todo: 测试 countLine 是否正确')
 //
 const countLine = (chess, block, wall) => (s) => {
   let r = 0b1
@@ -55,57 +62,58 @@ const countLine = (chess, block, wall) => (s) => {
   return r
 }
 
-const generateAllModes = (arr = [[]], deep = 6) => {
-  if (deep === 0) return arr
-  let temp = []
-  for (const last of arr) for (const item of [0, 1, 2]) temp.push([...last, item])
-  return generateAllModes(temp, deep - 1)
+const generateAllModes = (length) => {
+  let rst = []
+  let max = 2 ** (length + 1)
+  while (max-- > 0) {
+    rst.push('0b' + max.toString(2))
+  }
+  return rst
 }
 
-const allModes = generateAllModes([[]], 9)
-  .filter((x) => x[4] == 1)
-  .map(countLine(1, 2))
-  .filter((x) => x.toString(2).match(/1/g)?.length > 2)
-  .filter((x) => x.toString(2).length > 5)
-  .sort()
-  .map((x) => x.toString(2))
+const allModes = generateAllModes(11)
 
-const obj = {}
-allModes.forEach((x) => (obj[x] = null))
-const isDead2 = (x) => /10{0,1}1/.test(x)
+const isLive1 = (x) => /010/.test(x) && x.length > 5
+const isDead2 = (x) => /10{0,1}1/.test(x) && x.length >= 5
+const isLive2 = (x) => [/000110/, /001100/, /011000/, /001010/, /010100/].some((t) => t.test(x))
+const isLive2x2 = (x) => /0101010/.test(x)
 const isDead3 = (x) => [/111/, /1011/, /1101/, /11001/, /10011/, /10101/].some((t) => t.test(x))
-const isDead4 = (x) => [/1111/, /11011/, /11101/, /10111/].some((t) => t.test(x))
-const isLive2 = (x) => /^0+10{0,1}10+$/.test(x) && x.length > 5
 const isLive3 = (x) => [/010110/, /011010/, /01110/, /1010101/].some((t) => t.test(x))
+const isDead4 = (x) => [/1111/, /11011/, /11101/, /10111/].some((t) => t.test(x))
 const isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) => t.test(x))
 const is5 = (x) => /1{5}/.test(x)
 
+const stat = {}
+allModes.forEach((x) => (stat[x] = null))
 // 映射 棋型count -> 棋型bit
-const ninePointScore = []
-allModes.forEach((x) => isDead2(x.slice(1)) && (obj[x] = Score.d2) && (ninePointScore[+`0b${x}`] = d2))
-allModes.forEach((x) => isLive2(x.slice(1)) && (obj[x] = Score.l2) && (ninePointScore[+`0b${x}`] = l2))
-allModes.forEach((x) => isDead3(x.slice(1)) && (obj[x] = Score.d3) && (ninePointScore[+`0b${x}`] = d3))
-allModes.forEach((x) => isLive3(x.slice(1)) && (obj[x] = Score.l3) && (ninePointScore[+`0b${x}`] = l3))
-allModes.forEach((x) => isDead4(x.slice(1)) && (obj[x] = Score.d4) && (ninePointScore[+`0b${x}`] = d4))
-allModes.forEach((x) => isLive4(x.slice(1)) && (obj[x] = Score.l4) && (ninePointScore[+`0b${x}`] = l4))
-allModes.forEach((x) => is5(x.slice(1)) && (obj[x] = Score.l5) && (ninePointScore[+`0b${x}`] = l5))
+const ninePointMode = []
+// 这里从上到下的顺序很重要, 必须子多的在后, 子多的覆盖子少的
+allModes.forEach((x) => isLive1(x.slice(3)) && (stat[x] = 'l1') && (ninePointMode[+x] = l1))
+allModes.forEach((x) => isDead2(x.slice(3)) && (stat[x] = 'd2') && (ninePointMode[+x] = d2))
+allModes.forEach((x) => isLive2(x.slice(3)) && (stat[x] = 'l2') && (ninePointMode[+x] = l2))
+allModes.forEach((x) => isDead3(x.slice(3)) && (stat[x] = 'd3') && (ninePointMode[+x] = d3))
+allModes.forEach((x) => isLive2x2(x.slice(3)) && (stat[x] = 'l2x2') && (ninePointMode[+x] = l2x2))
+allModes.forEach((x) => isLive3(x.slice(3)) && (stat[x] = 'l3') && (ninePointMode[+x] = l3))
+allModes.forEach((x) => isDead4(x.slice(3)) && (stat[x] = 'd4') && (ninePointMode[+x] = d4))
+allModes.forEach((x) => isLive4(x.slice(3)) && (stat[x] = 'l4') && (ninePointMode[+x] = l4))
+allModes.forEach((x) => is5(x.slice(3)) && (stat[x] = 'l5') && (ninePointMode[+x] = l5))
 
 console.log(
   '未构成棋型的组合, 这一部分已经验证',
-  Object.keys(obj)
-    .filter((x) => !obj[x])
-    .map((x) => x.slice(1))
+  Object.keys(stat)
+    .filter((x) => !stat[x])
+    .map((x) => x.slice(3))
 )
 console.warn('todo: 验证以下棋型是否正确')
 Object.keys(Score).forEach((m) => {
   console.log(
     m,
-    Object.keys(obj)
-      .filter((x) => obj[x] === Score[m])
-      .map((x) => x.slice(1))
+    Object.keys(stat)
+      .filter((x) => stat[x] === m)
+      .map((x) => x.slice(3))
   )
 })
 
-console.log({ ninePointScore })
+console.log({ allModes, ninePointMode })
 
-export { ninePointScore, Score, countLine, getPointMode, d2, l2, d3, l3, d4, l4, l5 }
+export { ninePointMode, Score, countLine, getPointMode, chessModeBit }

@@ -266,158 +266,7 @@ Chessboard.prototype.availableSteps = function () {
   }
   return availableSteps
 }
-Chessboard.prototype.analyseMax = function (data, type) {
-  switch (type) {
-    case Chessboard.FIVE_TYPE:
-      return ~data.indexOf('11111') ? 1 : 0
-    case Chessboard.SFOUR_TYPE:
-      if (~data.indexOf('011110')) {
-        return 1
-      }
-      return 0
-    case Chessboard.FOUR_TYPE:
-      var c = 0
-      var res1 = data.match(/211110/g)
-      var res2 = data.match(/011112/g)
-      var res3 = data.match(/10111/g)
-      var res4 = data.match(/11011/g)
-      var res5 = data.match(/11101/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      c += res4 ? res4.length : 0
-      c += res5 ? res5.length : 0
-      return c
-    case Chessboard.STHREE_TYPE:
-      var c = 0
-      var res1 = data.match(/01110/g)
-      var res2 = data.match(/011010/g)
-      var res3 = data.match(/010110/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      return c
-    case Chessboard.THREE_TYPE:
-      var c = 0
-      var res1 = data.match(/211100/g)
-      var res2 = data.match(/001112/g)
-      var res3 = data.match(/211010/g)
-      var res4 = data.match(/010112/g)
-      var res5 = data.match(/210110/g)
-      var res6 = data.match(/011012/g)
-      var res7 = data.match(/10011/g)
-      var res8 = data.match(/11001/g)
-      var res9 = data.match(/10101/g)
-      var res10 = data.match(/2011102/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      c += res4 ? res4.length : 0
-      c += res5 ? res5.length : 0
-      c += res6 ? res6.length : 0
-      c += res7 ? res7.length : 0
-      c += res8 ? res8.length : 0
-      c += res9 ? res9.length : 0
-      c += res10 ? res10.length : 0
-      return c
-    case Chessboard.STWO_TYPE:
-      var c = 0
-      var res1 = data.match(/001100/g)
-      var res2 = data.match(/01010/g)
-      var res3 = data.match(/010010/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      return c
-    case Chessboard.TWO_TYPE:
-      var c = 0
-      var res1 = data.match(/001100/g)
-      var res2 = data.match(/01010/g)
-      var res3 = data.match(/010010/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      return c
-    default:
-      return 0
-  }
-}
-Chessboard.prototype.analyseMin = function (data, type) {
-  switch (type) {
-    case Chessboard.FIVE_TYPE:
-      return ~data.indexOf('22222') ? 1 : 0
-    case Chessboard.SFOUR_TYPE:
-      if (~data.indexOf('022220')) {
-        return 1
-      }
-      return 0
-    case Chessboard.FOUR_TYPE:
-      var c = 0
-      var res1 = data.match(/122220/g)
-      var res2 = data.match(/022221/g)
-      var res3 = data.match(/20222/g)
-      var res4 = data.match(/22022/g)
-      var res5 = data.match(/22202/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      c += res4 ? res4.length : 0
-      c += res5 ? res5.length : 0
-      return c
-    case Chessboard.STHREE_TYPE:
-      var c = 0
-      var res1 = data.match(/02220/g)
-      var res2 = data.match(/022020/g)
-      var res3 = data.match(/020220/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      return c
-    case Chessboard.THREE_TYPE:
-      var c = 0
-      var res1 = data.match(/122200/g)
-      var res2 = data.match(/002221/g)
-      var res3 = data.match(/122020/g)
-      var res4 = data.match(/020221/g)
-      var res5 = data.match(/120220/g)
-      var res6 = data.match(/022021/g)
-      var res7 = data.match(/20022/g)
-      var res8 = data.match(/22002/g)
-      var res9 = data.match(/20202/g)
-      var res10 = data.match(/1022201/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      c += res4 ? res4.length : 0
-      c += res5 ? res5.length : 0
-      c += res6 ? res6.length : 0
-      c += res7 ? res7.length : 0
-      c += res8 ? res8.length : 0
-      c += res9 ? res9.length : 0
-      c += res10 ? res10.length : 0
-      return c
-    case Chessboard.STWO_TYPE:
-      var c = 0
-      var res1 = data.match(/002200/g)
-      var res2 = data.match(/02020/g)
-      var res3 = data.match(/020020/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      return c
-    case Chessboard.TWO_TYPE:
-      var c = 0
-      var res1 = data.match(/001100/g)
-      var res2 = data.match(/01010/g)
-      var res3 = data.match(/010010/g)
-      c += res1 ? res1.length : 0
-      c += res2 ? res2.length : 0
-      c += res3 ? res3.length : 0
-      return c
-    default:
-      return 0
-  }
-}
+
 /**
  * [evaluate 计算当前棋盘的估值]
  * @return {[type]} [description]
@@ -642,20 +491,13 @@ Chessboard.NONE = 0
 Chessboard.MAX = 1
 Chessboard.MIN = 2
 Chessboard.FIVE_TYPE = 1
-Chessboard.SFOUR_TYPE = 2
 Chessboard.FOUR_TYPE = 3
-Chessboard.STHREE_TYPE = 4
 Chessboard.THREE_TYPE = 5
-Chessboard.STWO_TYPE = 6
 Chessboard.TWO_TYPE = 7
 Chessboard.MAX_VALUE = 100000
 Chessboard.MIN_VALUE = -100000
-Chessboard.FIVE_W = 100000
-Chessboard.SFOUR_W = 10000
 Chessboard.FOUR_W = 5000
-Chessboard.STHREE_W = 2000
 Chessboard.THREE_W = 1000
-Chessboard.STWO_W = 500
 Chessboard.TWO_W = 200
 Chessboard.ONE_W = 10
 

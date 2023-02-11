@@ -1,5 +1,5 @@
-import { boardLength, boardCenter } from './const'
-import { countLine, ninePointScore, Score, getPointMode } from './genLineScore'
+import { boardLength, boardCenter, min } from './const'
+import { countLine, ninePointMode, Score, getPointMode, chessModeBit } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 
@@ -7,6 +7,7 @@ const EMPTY = 0
 const MAX = 1
 const MIN = 2
 const WALL = 3
+const { l1, d2, l2, l2x2, d3, l3, d4, l4, l5 } = chessModeBit
 
 export class Gobang {
   constructor({ firstHand }) {
@@ -141,7 +142,7 @@ export class Gobang {
     console.log({ score })
     this.put(score[1], MAX)
     this.logStats()
-    console.log('score', this.evaluate())
+    console.log('score', this.evaluate(false, true))
     return score
   }
 
@@ -392,7 +393,7 @@ export class Gobang {
     let rst = 0
     for (let a = 0; a < 4; a++) {
       const count = countFn(chessInFourDirection[a])
-      const score = ninePointScore[count]
+      const score = ninePointMode[count]
       rst += score || 0
     }
     return rst
@@ -542,7 +543,7 @@ export class Gobang {
   // !!!!!!!!   node3, node4 可以各删除 首尾四行
   // 完了尝试 下棋时更新4行评分, 看看两者效率差距
   // 记录行列, 只更新下过子的地方?
-  evaluate(kill) {
+  evaluate(kill, log) {
     const winner = this.winner
     if (winner === MAX) return Score.win
     else if (winner === MIN) return -Score.win
@@ -555,6 +556,7 @@ export class Gobang {
     let maxD3 = 0
     let maxL2 = 0
     let maxD2 = 0
+    let maxL1 = 0
     //
     let minL5 = 0
     let minL4 = 0
@@ -563,27 +565,25 @@ export class Gobang {
     let minD3 = 0
     let minL2 = 0
     let minD2 = 0
+    let minL1 = 0
 
     const readAndCountScore = (role, piece) => {
-      // 至少是死二
-      // console.log(piece.toString(2))
-      if (piece < 0b100011) return
-      const score = ninePointScore[piece]
-      // score && console.log(piece, piece.toString(2), score.toString(2))
-      if (!score) return
-      const d2 = 2 ** 0
-      const l2 = 2 ** 4
-      const d3 = 2 ** 8
-      const l3 = 2 ** 12
-      const d4 = 2 ** 14
-      const l4 = 2 ** 16
-      const l5 = 2 ** 18
+      // 至少是活1
+      // log && console.log(piece.toString(2))
+      if (piece < 0b100010) return
+      const pieceMode = ninePointMode[piece]
+      if (!pieceMode) return
+      // log && console.warn(pieceMode.toString(2))
       if (role === MAX) {
-        switch (score) {
+        switch (pieceMode) {
+          case l1:
+            return maxL1++
           case d2:
             return maxD2++
           case l2:
             return maxL2++
+          case l2x2:
+            return (maxL2 += 2)
           case d3:
             return maxD3++
           case l3:
@@ -598,11 +598,15 @@ export class Gobang {
             return console.erroe('error')
         }
       } else {
-        switch (score) {
+        switch (pieceMode) {
+          case l1:
+            return minL1++
           case d2:
             return minD2++
           case l2:
             return minL2++
+          case l2x2:
+            return (minL2 += 2)
           case d3:
             return minD3++
           case l3:
@@ -623,15 +627,16 @@ export class Gobang {
       let piece = 0b1
       let emptyCount = 0
       let isBreak = false
+
       // 评分是用的连续9子的评分, 这里一行有 15 个子, 能行么?
-      // 大概率可行, 一行超过连续 9 子只有某一方棋子和单个空格, 这个概率很低
+      // 大概率可行? , 一行超过连续 9 子只有某一方棋子和单个空格, 这个概率很低
       // 010101010, 最多是这样连续9子, 两边不可能再加了, 因为 max 不可能下两边不下中间
       // 0101000101 只能是类似这种, 中间先空出来, 最后在中间落子, 这个概率很低吧?
       // 如果要非常严谨, 可以把超过9子的情况也加到 Score map 中去
       // console.log(line.toString(2))
       for (let i = 0; i < 15; i++) {
         const val = line & 0b11
-        // console.log('val', val.toString(2))
+        // log && console.log('val', val.toString(2))
         line >>= 2
         if (val === block || val === WALL) {
           // 截断, 读分
@@ -646,13 +651,12 @@ export class Gobang {
           } else {
             // 出现两个空位, 截断, 计分
             piece <<= 1
-            // 死二特例
-            if ((piece === 0b11100 || piece === 0b101100) && (line & 0b1100) === EMPTY && i != 14) piece <<= 1
+            // 下一个还是空位
+            if ((line & 0b1100) === EMPTY && i != 14) piece <<= 1
             readAndCountScore(chess, piece)
             // 被空位截断的, 后续读子时要把空位算上
             piece = 0b100
-            // 判断是不是 000
-            if (i > 1 && (line & (0b11 << (2 * (i - 2)))) === EMPTY) piece <<= 1
+            if ((line & 0b1100) === EMPTY && i != 14) piece <<= 1
             // console.error(line & (0b11 << (2 * (i - 2))), { p: piece.toString(2) })
             emptyCount = 0
             isBreak = true
@@ -672,14 +676,8 @@ export class Gobang {
       }
     }
 
-    // 10100000000000000 // l2
-    // 1010010000000000000 // l2
-    // 1011000000000001111 // d2
-    // 1010000000000001111 // l2
-    // console.log(check(MAX, MIN, 0b10100000000000000))
-    // console.log(check(MAX, MIN, 0b10100100000))
     // console.log(check(MAX, MIN, 0b1011000000000001111))
-    // console.log(check(MAX, MIN, 0b1010000000000001111))
+    // log && console.log(check(MIN, MAX, 0b10001000100000000000))
     // return
     // max
     for (let a = 0; a < this.node1.length; a++) check(MAX, MIN, this.node1[a])
@@ -692,29 +690,55 @@ export class Gobang {
     for (let a = 0; a < this.node3.length; a++) check(MIN, MAX, this.node3[a])
     for (let a = 0; a < this.node4.length; a++) check(MIN, MAX, this.node4[a])
 
-    const maxScore =
+    if (log) {
+      console.log({ maxL1, maxD2, maxL2, maxD3, maxL3, maxD4, maxL4, maxL5 })
+      console.log({ minL1, minD2, minL2, minD3, minL3, minD4, minL4, minL5 })
+    }
+
+    let maxScore = 0
+    let minScore = 0
+    // 搜索结束后, 下一个是谁下棋
+    const seekEndAndNextIsMax = (this.seekDepth & 0b1) === 0
+    if (seekEndAndNextIsMax) {
+      if (maxL4 || maxD4) return Score.l5
+      if (minL4) return -Score.l5
+      if (minL3 & minD4) return -Score.l5 // 不严谨, 有可能被一颗子拦截
+      if (maxL3) {
+        if (!minL4) maxScore += Score.l4
+        if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
+      }
+    } else {
+      if (minL4 || minD4) return -Score.l5
+      if (maxL4) return Score.l5
+      if (maxL3 & maxD4) return Score.l5 // 不严谨, 有可能被一颗子拦截
+      if (minL3) {
+        if (!maxL4) minScore += Score.l4
+        if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
+      }
+    }
+    if (maxL2 > 2) maxScore += Score.l2 // 额外奖励, 可调整
+    if (minL2 > 2) minScore += Score.l2 // 额外奖励, 可调整
+    maxScore =
       Score.l5 * maxL5 +
       Score.l4 * maxL4 +
       Score.d4 * maxD4 +
       Score.l3 * maxL3 +
       Score.d3 * maxD3 +
       Score.l2 * maxL2 +
-      Score.d2 * maxD2
-    const minScore =
+      Score.d2 * maxD2 +
+      Score.l1 * maxD2
+    minScore =
       Score.l5 * minL5 +
       Score.l4 * minL4 +
       Score.d4 * minD4 +
       Score.l3 * minL3 +
       Score.d3 * minD3 +
       Score.l2 * minL2 +
-      Score.d2 * minD2
-
-    // todo: 检测双三等棋型
-
-    // console.log({ maxL5, maxL4, maxD4, maxL3, maxD3, maxL2, maxD2, minL5, minL4, minD4, minL3, minD3, minL2, minD2 })
-    // console.log(maxScore - minScore * (this.firstHand === MIN ? 2 : 1.2))
+      Score.d2 * minD2 +
+      Score.l1 * minD2
     // 后手时, 加强防守
-    return maxScore - minScore * (this.firstHand === MIN ? 10 : 5)
+    let score = maxScore - minScore * (this.firstHand === MIN ? 5 : 1)
+    return score
   }
 
   get winner() {
