@@ -75,7 +75,7 @@ const Game = () => {
 
   const onStart = () => {
     startX(true)
-    gobang = new Gobang({ firstHand: Gobang.MIN })
+    gobang = new Gobang({ firstHand: Gobang.MAX })
     window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
     if (gobang.firstHand === Gobang.MAX) maxGo()
