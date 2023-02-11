@@ -1,4 +1,4 @@
-import { boardLength, boardCenter, min } from './const'
+import { boardLength, boardCenter } from './const'
 import { countLine, ninePointMode, Score, getPointMode, chessModeBit } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
@@ -628,11 +628,11 @@ export class Gobang {
       let emptyCount = 0
       let isBreak = false
 
-      // 评分是用的连续9子的评分, 这里一行有 15 个子, 能行么?
-      // 大概率可行? , 一行超过连续 9 子只有某一方棋子和单个空格, 这个概率很低
-      // 010101010, 最多是这样连续9子, 两边不可能再加了, 因为 max 不可能下两边不下中间
+      // 评分是用的连续11子的评分, 这里一行有 15 个子, 能行么?
+      // 大概率可行? , 一行超过连续 11子只有某一方棋子和单个空格, 这个概率很低
+      // 010101010, 最多是这样连续11子, 两边不可能再加了, 因为 max 不可能下两边不下中间
       // 0101000101 只能是类似这种, 中间先空出来, 最后在中间落子, 这个概率很低吧?
-      // 如果要非常严谨, 可以把超过9子的情况也加到 Score map 中去
+      // 如果要非常严谨, 可以把超过11子的情况也加到 Score map 中去
       // console.log(line.toString(2))
       for (let i = 0; i < 15; i++) {
         const val = line & 0b11

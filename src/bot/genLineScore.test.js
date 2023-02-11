@@ -34,3 +34,7 @@ test.each(['0101010', '001010100', '0001010100', '0010101000', '00010101000', '0
 test.each(['010000', '001000', '1000010', '00001000', '1000010'])('ninePointMode l1 %s', (a) => {
   expect(ninePointMode[toBits(a)]).toEqual(l1)
 })
+test.each(['1111'])('ninePointMode d4 %s', (a) => {
+  expect(ninePointMode[toBits(a)]).not.toBe(d4)
+  expect(ninePointMode[toBits(a)]).not.toBe(d3)
+})

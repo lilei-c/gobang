@@ -77,9 +77,9 @@ const isLive1 = (x) => /010/.test(x) && x.length > 5
 const isDead2 = (x) => /10{0,1}1/.test(x) && x.length >= 5
 const isLive2 = (x) => [/000110/, /001100/, /011000/, /001010/, /010100/].some((t) => t.test(x))
 const isLive2x2 = (x) => /0101010/.test(x)
-const isDead3 = (x) => [/111/, /1011/, /1101/, /11001/, /10011/, /10101/].some((t) => t.test(x))
+const isDead3 = (x) => [/111/, /1011/, /1101/, /11001/, /10011/, /10101/].some((t) => t.test(x)) && x.length >= 5
 const isLive3 = (x) => [/010110/, /011010/, /01110/, /1010101/].some((t) => t.test(x))
-const isDead4 = (x) => [/1111/, /11011/, /11101/, /10111/].some((t) => t.test(x))
+const isDead4 = (x) => [/11110/, /01111/, /11011/, /11101/, /10111/].some((t) => t.test(x))
 const isLive4 = (x) => [/011110/, /1011101/, /11011011/, /111010111/].some((t) => t.test(x))
 const is5 = (x) => /1{5}/.test(x)
 
