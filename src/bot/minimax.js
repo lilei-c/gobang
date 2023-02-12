@@ -16,15 +16,15 @@ export class Gobang {
     this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
-    this.maxPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, null))
-    this.minPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, null))
+    this.maxPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, [0, 0, 0, 0]))
+    this.minPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, [0, 0, 0, 0]))
     this.stats = {} // 统计性能优化数据
     this.enableStats = true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
-    this.seekDepth = 4
-    this.kilSeeklDepth = 15 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.seekDepth = 2
+    this.seekKillDepth = 1 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
   static MIN = MIN
@@ -37,11 +37,11 @@ export class Gobang {
 
   initNode() {
     // 横
-    this.node1 = arrayN(boardLength, 0b000000000000000000000000000000)
+    this.node0 = arrayN(boardLength, 0b000000000000000000000000000000)
     // 竖
     const buffer = new ArrayBuffer(4 * 15)
-    this.node2 = new Int32Array(buffer)
-    for (let i = 0; i <= 14; i++) this.node2[i] = 0b000000000000000000000000000000
+    this.node1 = new Int32Array(buffer)
+    for (let i = 0; i <= 14; i++) this.node1[i] = 0b000000000000000000000000000000
     // 左斜
     // 0  0,0
     // 1  0,1  1,0
@@ -49,7 +49,7 @@ export class Gobang {
     // 从上往下数15行, 棋盘外的设置为墙, 点击 i,j 时, 做如下计算
     // 行数:i+j
     // bit位(高->低):i
-    this.node3 = []
+    this.node2 = []
     for (let rowsIndex = 0; rowsIndex < boardLength * 2 - 1; rowsIndex++) {
       let rst = 0b0
       for (let i = 0; i < 15; i++) {
@@ -59,7 +59,7 @@ export class Gobang {
           rst += 0b11
         }
       }
-      this.node3[rowsIndex] = rst
+      this.node2[rowsIndex] = rst
     }
     // 右斜
     // 0  0,14 1,15
@@ -67,7 +67,7 @@ export class Gobang {
     // 从上往下数 (固定0-14行, 棋盘外的设置为墙)
     // 行数:14+i-j
     // bit位(高->低):i
-    this.node4 = []
+    this.node3 = []
     for (let rowsIndex = 0; rowsIndex < boardLength * 2 - 1; rowsIndex++) {
       let rst = 0b0
       for (let i = 0; i < 15; i++) {
@@ -77,7 +77,7 @@ export class Gobang {
           rst += 0b11
         }
       }
-      this.node4[rowsIndex] = rst
+      this.node3[rowsIndex] = rst
     }
   }
 
@@ -88,13 +88,13 @@ export class Gobang {
     this.stack.push(position)
 
     // 横
-    this.node1[i] = this.node1[i] | (role << (2 * (14 - j)))
+    this.node0[i] = this.node0[i] | (role << (2 * (14 - j)))
     // 竖
-    this.node2[j] = this.node2[j] | (role << (2 * (14 - i)))
+    this.node1[j] = this.node1[j] | (role << (2 * (14 - i)))
     // 左斜
-    this.node3[i + j] = this.node3[i + j] | (role << (2 * (14 - i)))
+    this.node2[i + j] = this.node2[i + j] | (role << (2 * (14 - i)))
     // 右斜
-    this.node4[14 + i - j] = this.node4[14 + i - j] | (role << (2 * (14 - i)))
+    this.node3[14 + i - j] = this.node3[14 + i - j] | (role << (2 * (14 - i)))
 
     this.updateFourLineScore(i, j)
   }
@@ -108,14 +108,14 @@ export class Gobang {
 
       // 横
       const move1 = 2 * (14 - j)
-      this.node1[i] = (this.node1[i] | (0b11 << move1)) ^ (0b11 << move1)
+      this.node0[i] = (this.node0[i] | (0b11 << move1)) ^ (0b11 << move1)
       // 竖
       const move2 = 2 * (14 - i)
-      this.node2[j] = (this.node2[j] | (0b11 << move2)) ^ (0b11 << move2)
+      this.node1[j] = (this.node1[j] | (0b11 << move2)) ^ (0b11 << move2)
       // 左斜
-      this.node3[i + j] = (this.node3[i + j] | (0b11 << move2)) ^ (0b11 << move2)
+      this.node2[i + j] = (this.node2[i + j] | (0b11 << move2)) ^ (0b11 << move2)
       // 右斜
-      this.node4[14 + i - j] = (this.node4[14 + i - j] | (0b11 << move2)) ^ (0b11 << move2)
+      this.node3[14 + i - j] = (this.node3[14 + i - j] | (0b11 << move2)) ^ (0b11 << move2)
 
       this.updateFourLineScore(i, j)
     }
@@ -136,7 +136,7 @@ export class Gobang {
       console.warn('算杀成功 :)')
     } else {
       console.time('thinking')
-      score = this.minimax(this.stack.length < 6 ? 4 : this.seekDepth)
+      score = this.minimax(this.seekDepth)
       console.timeEnd('thinking')
     }
     console.log({ score })
@@ -207,7 +207,7 @@ export class Gobang {
 
   getChess(i, j) {
     // todo 验证 i,j 合法
-    return (this.node1[i] >> (2 * (14 - j))) & 0b11
+    return (this.node0[i] >> (2 * (14 - j))) & 0b11
   }
 
   minimax(depth, kill, alpha = -Infinity, beta = Infinity, isMax = true) {
@@ -273,111 +273,131 @@ export class Gobang {
     }
   }
 
-  getChessInFourDirection(centerI, centerJ) {
-    let rst = [[], [], [], []]
+  getChessInFourDirection(centerI, centerJ, direction) {
+    let rst0 = []
+    let rst1 = []
+    let rst2 = []
+    let rst3 = []
     // 横
-    const s = this.node1[centerI]
-    const s1 = centerJ >= 4 ? (s >> (2 * (18 - centerJ))) & 0b11 : 0b11
-    const s2 = centerJ >= 3 ? (s >> (2 * (17 - centerJ))) & 0b11 : 0b11
-    const s3 = centerJ >= 2 ? (s >> (2 * (16 - centerJ))) & 0b11 : 0b11
-    const s4 = centerJ >= 1 ? (s >> (2 * (15 - centerJ))) & 0b11 : 0b11
-    const s5 = (s >> (2 * (14 - centerJ))) & 0b11
-    const s6 = centerJ <= 13 ? (s >> (2 * (13 - centerJ))) & 0b11 : 0b11
-    const s7 = centerJ <= 12 ? (s >> (2 * (12 - centerJ))) & 0b11 : 0b11
-    const s8 = centerJ <= 11 ? (s >> (2 * (11 - centerJ))) & 0b11 : 0b11
-    const s9 = centerJ <= 10 ? (s >> (2 * (10 - centerJ))) & 0b11 : 0b11
-    rst[0] = [s1, s2, s3, s4, s5, s6, s7, s8, s9]
+    if (direction === undefined || direction === 0) {
+      const s = this.node0[centerI]
+      const s1 = centerJ >= 4 ? (s >> (2 * (18 - centerJ))) & 0b11 : 0b11
+      const s2 = centerJ >= 3 ? (s >> (2 * (17 - centerJ))) & 0b11 : 0b11
+      const s3 = centerJ >= 2 ? (s >> (2 * (16 - centerJ))) & 0b11 : 0b11
+      const s4 = centerJ >= 1 ? (s >> (2 * (15 - centerJ))) & 0b11 : 0b11
+      const s5 = (s >> (2 * (14 - centerJ))) & 0b11
+      const s6 = centerJ <= 13 ? (s >> (2 * (13 - centerJ))) & 0b11 : 0b11
+      const s7 = centerJ <= 12 ? (s >> (2 * (12 - centerJ))) & 0b11 : 0b11
+      const s8 = centerJ <= 11 ? (s >> (2 * (11 - centerJ))) & 0b11 : 0b11
+      const s9 = centerJ <= 10 ? (s >> (2 * (10 - centerJ))) & 0b11 : 0b11
+      rst0 = [s1, s2, s3, s4, s5, s6, s7, s8, s9]
+      if (direction === 0) return rst0
+    }
     // 竖
-    const v = this.node2[centerJ]
-    const v1 = centerI >= 4 ? (v >> (2 * (18 - centerI))) & 0b11 : 0b11
-    const v2 = centerI >= 3 ? (v >> (2 * (17 - centerI))) & 0b11 : 0b11
-    const v3 = centerI >= 2 ? (v >> (2 * (16 - centerI))) & 0b11 : 0b11
-    const v4 = centerI >= 1 ? (v >> (2 * (15 - centerI))) & 0b11 : 0b11
-    const v5 = (v >> (2 * (14 - centerI))) & 0b11
-    const v6 = centerI <= 13 ? (v >> (2 * (13 - centerI))) & 0b11 : 0b11
-    const v7 = centerI <= 12 ? (v >> (2 * (12 - centerI))) & 0b11 : 0b11
-    const v8 = centerI <= 11 ? (v >> (2 * (11 - centerI))) & 0b11 : 0b11
-    const v9 = centerI <= 10 ? (v >> (2 * (10 - centerI))) & 0b11 : 0b11
-    rst[1] = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+    if (direction === undefined || direction === 1) {
+      const v = this.node1[centerJ]
+      const v1 = centerI >= 4 ? (v >> (2 * (18 - centerI))) & 0b11 : 0b11
+      const v2 = centerI >= 3 ? (v >> (2 * (17 - centerI))) & 0b11 : 0b11
+      const v3 = centerI >= 2 ? (v >> (2 * (16 - centerI))) & 0b11 : 0b11
+      const v4 = centerI >= 1 ? (v >> (2 * (15 - centerI))) & 0b11 : 0b11
+      const v5 = (v >> (2 * (14 - centerI))) & 0b11
+      const v6 = centerI <= 13 ? (v >> (2 * (13 - centerI))) & 0b11 : 0b11
+      const v7 = centerI <= 12 ? (v >> (2 * (12 - centerI))) & 0b11 : 0b11
+      const v8 = centerI <= 11 ? (v >> (2 * (11 - centerI))) & 0b11 : 0b11
+      const v9 = centerI <= 10 ? (v >> (2 * (10 - centerI))) & 0b11 : 0b11
+      rst1 = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
+      if (direction === 1) return rst1
+    }
     // 左斜
-    const l = this.node3[centerI + centerJ]
-    const l1 = centerI >= 4 ? (l >> (2 * (18 - centerI))) & 0b11 : 0b11
-    const l2 = centerI >= 3 ? (l >> (2 * (17 - centerI))) & 0b11 : 0b11
-    const l3 = centerI >= 2 ? (l >> (2 * (16 - centerI))) & 0b11 : 0b11
-    const l4 = centerI >= 1 ? (l >> (2 * (15 - centerI))) & 0b11 : 0b11
-    const l5 = (l >> (2 * (14 - centerI))) & 0b11
-    const l6 = centerI <= 13 ? (l >> (2 * (13 - centerI))) & 0b11 : 0b11
-    const l7 = centerI <= 12 ? (l >> (2 * (12 - centerI))) & 0b11 : 0b11
-    const l8 = centerI <= 11 ? (l >> (2 * (11 - centerI))) & 0b11 : 0b11
-    const l9 = centerI <= 10 ? (l >> (2 * (10 - centerI))) & 0b11 : 0b11
-    rst[2] = [l1, l2, l3, l4, l5, l6, l7, l8, l9]
+    if (direction === undefined || direction === 2) {
+      const l = this.node2[centerI + centerJ]
+      const l1 = centerI >= 4 ? (l >> (2 * (18 - centerI))) & 0b11 : 0b11
+      const l2 = centerI >= 3 ? (l >> (2 * (17 - centerI))) & 0b11 : 0b11
+      const l3 = centerI >= 2 ? (l >> (2 * (16 - centerI))) & 0b11 : 0b11
+      const l4 = centerI >= 1 ? (l >> (2 * (15 - centerI))) & 0b11 : 0b11
+      const l5 = (l >> (2 * (14 - centerI))) & 0b11
+      const l6 = centerI <= 13 ? (l >> (2 * (13 - centerI))) & 0b11 : 0b11
+      const l7 = centerI <= 12 ? (l >> (2 * (12 - centerI))) & 0b11 : 0b11
+      const l8 = centerI <= 11 ? (l >> (2 * (11 - centerI))) & 0b11 : 0b11
+      const l9 = centerI <= 10 ? (l >> (2 * (10 - centerI))) & 0b11 : 0b11
+      rst2 = [l1, l2, l3, l4, l5, l6, l7, l8, l9]
+      if (direction === 2) return rst2
+    }
     // 右斜
-    const rr = this.node4[14 + centerI - centerJ]
-    const rr1 = centerI >= 4 ? (rr >> (2 * (18 - centerI))) & 0b11 : 0b11
-    const rr2 = centerI >= 3 ? (rr >> (2 * (17 - centerI))) & 0b11 : 0b11
-    const rr3 = centerI >= 2 ? (rr >> (2 * (16 - centerI))) & 0b11 : 0b11
-    const rr4 = centerI >= 1 ? (rr >> (2 * (15 - centerI))) & 0b11 : 0b11
-    const rr5 = (rr >> (2 * (14 - centerI))) & 0b11
-    const rr6 = centerI <= 13 ? (rr >> (2 * (13 - centerI))) & 0b11 : 0b11
-    const rr7 = centerI <= 12 ? (rr >> (2 * (12 - centerI))) & 0b11 : 0b11
-    const rr8 = centerI <= 11 ? (rr >> (2 * (11 - centerI))) & 0b11 : 0b11
-    const rr9 = centerI <= 10 ? (rr >> (2 * (10 - centerI))) & 0b11 : 0b11
-    rst[3] = [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
-    return rst
+    if (direction === undefined || direction === 2) {
+      const rr = this.node3[14 + centerI - centerJ]
+      const rr1 = centerI >= 4 ? (rr >> (2 * (18 - centerI))) & 0b11 : 0b11
+      const rr2 = centerI >= 3 ? (rr >> (2 * (17 - centerI))) & 0b11 : 0b11
+      const rr3 = centerI >= 2 ? (rr >> (2 * (16 - centerI))) & 0b11 : 0b11
+      const rr4 = centerI >= 1 ? (rr >> (2 * (15 - centerI))) & 0b11 : 0b11
+      const rr5 = (rr >> (2 * (14 - centerI))) & 0b11
+      const rr6 = centerI <= 13 ? (rr >> (2 * (13 - centerI))) & 0b11 : 0b11
+      const rr7 = centerI <= 12 ? (rr >> (2 * (12 - centerI))) & 0b11 : 0b11
+      const rr8 = centerI <= 11 ? (rr >> (2 * (11 - centerI))) & 0b11 : 0b11
+      const rr9 = centerI <= 10 ? (rr >> (2 * (10 - centerI))) & 0b11 : 0b11
+      rst3 = [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
+      if (direction === 3) return rst3
+    }
+    return [rst0, rst1, rst2, rst3]
   }
 
-  //
   getPositionsInFourDirection(i, j) {
-    let rst = []
-    if (!this.stack.length) return rst
+    let rst0 = []
+    let rst1 = []
+    let rst2 = []
+    let rst3 = []
     const minI = i - 4 > 0 ? i - 4 : 0
     const maxI = i + 4 < boardLength - 1 ? i + 4 : boardLength - 1
     const minJ = j - 4 > 0 ? j - 4 : 0
     const maxJ = j + 4 < boardLength - 1 ? j + 4 : boardLength - 1
     // 横
     for (let j = minJ; j <= maxJ; j++) {
-      rst.push([i, j])
+      rst0.push([i, j])
     }
     // 竖
     for (let i = minI; i <= maxI; i++) {
-      rst.push([i, j])
+      rst1.push([i, j])
     }
     // 左斜
     for (let a = 1; a <= 4; a++) {
-      if (i - a >= minI && j + a <= maxJ) rst.push([i - a, j + a])
-      if (i + a <= maxI && j - a >= minJ) rst.push([i + a, j - a])
+      if (i - a >= minI && j + a <= maxJ) rst2.push([i - a, j + a])
+      if (i + a <= maxI && j - a >= minJ) rst2.push([i + a, j - a])
     }
     // 右斜
     for (let a = 1; a <= 4; a++) {
       if (i + a <= maxI && j + a <= maxJ) {
-        rst.push([i + a, j + a])
+        rst3.push([i + a, j + a])
       }
       if (i - a >= minI && j - a >= minJ) {
-        rst.push([i - a, j - a])
+        rst3.push([i - a, j - a])
       }
     }
-    return rst
+    return [rst0, rst1, rst2, rst3]
   }
 
   // i,j 米字线上的点都需要更新
   updateFourLineScore(i, j) {
     const positionsInFourDirection = this.getPositionsInFourDirection(i, j)
     // console.log(fourLinePoints)
-    for (let a = 0; a < positionsInFourDirection.length; a++) {
-      this.updatePointScore(positionsInFourDirection[a])
+    for (let direction = 0; direction < 4; direction++) {
+      const positions = positionsInFourDirection[direction]
+      for (let index = 0; index < positions.length; index++) {
+        const position = positions[index]
+        this.updatePointScore(position, direction)
+      }
     }
   }
 
   //
-  updatePointScore(position) {
+  updatePointScore(position, direction) {
     const [i, j] = position
     if (this.getChess(i, j) !== EMPTY) {
-      this.maxPointsScore[i][j] = 0
-      this.maxPointsScore[i][j] = 0
+      this.maxPointsScore[i][j] = [0, 0, 0, 0]
+      this.minPointsScore[i][j] = [0, 0, 0, 0]
     } else {
       // 这里 evaPoint 的 getChessInFourDirection 重复, 可以优化
-      this.maxPointsScore[i][j] = this.evaPoint(i, j, MAX)
-      this.minPointsScore[i][j] = this.evaPoint(i, j, MIN)
+      this.maxPointsScore[i][j][direction] = this.evaPoint(i, j, MAX, direction)
+      this.minPointsScore[i][j][direction] = this.evaPoint(i, j, MIN, direction)
     }
   }
 
@@ -385,17 +405,15 @@ export class Gobang {
    * 启发式搜索
    * 假如在此处落子后, 米字线上能得到的分数, 即为该点的分数
    */
-  evaPoint(i, j, role) {
-    const chessInFourDirection = this.getChessInFourDirection(i, j)
+  evaPoint(i, j, role, direction) {
+    const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
     const chess = role === MAX ? MAX : MIN
     const block = role === MAX ? MIN : MAX
     const countFn = countLine(chess, block, WALL)
     let rst = 0
-    for (let a = 0; a < 4; a++) {
-      const count = countFn(chessInFourDirection[a])
-      const score = ninePointMode[count]
-      rst += score || 0
-    }
+    const count = countFn(chessInFourDirection)
+    const score = ninePointMode[count]
+    rst += score || 0
     return rst
   }
 
@@ -434,8 +452,20 @@ export class Gobang {
     for (let a = 0; a < points.length; a++) {
       const point = points[a]
       const [i, j] = point
-      const pointMode = getPointMode(this.maxPointsScore[i][j])
-      const { l5, l4, d4, l3, d3, l2, d2 } = pointMode
+      let directionZeroMode = getPointMode(this.maxPointsScore[i][j][0])
+      const directionOneMode = getPointMode(this.maxPointsScore[i][j][1])
+      const directionTwoMode = getPointMode(this.maxPointsScore[i][j][2])
+      const directionThreeMode = getPointMode(this.maxPointsScore[i][j][3])
+      // 四个方向累加
+      directionZeroMode.l5 += directionOneMode.l5 + directionTwoMode.l5 + directionThreeMode.l5
+      directionZeroMode.l4 += directionOneMode.l4 + directionTwoMode.l4 + directionThreeMode.l4
+      directionZeroMode.d4 += directionOneMode.d4 + directionTwoMode.d4 + directionThreeMode.d4
+      directionZeroMode.l3 += directionOneMode.l3 + directionTwoMode.l3 + directionThreeMode.l3
+      directionZeroMode.d3 += directionOneMode.d3 + directionTwoMode.d3 + directionThreeMode.d3
+      directionZeroMode.l2 += directionOneMode.l2 + directionTwoMode.l2 + directionThreeMode.l2
+      directionZeroMode.d2 += directionOneMode.d2 + directionTwoMode.d2 + directionThreeMode.d2
+      directionZeroMode.l1 += directionOneMode.l1 + directionTwoMode.l1 + directionThreeMode.l1
+      const { l5, l4, d4, l3, d3, l2, d2, l1 } = directionZeroMode
       if (l5) maxL5.push(point)
       else if (l4) maxL4.push(point)
       else if (l3 && d4) maxD4L3.push(point)
@@ -454,8 +484,22 @@ export class Gobang {
     for (let a = 0; a < points.length; a++) {
       const point = points[a]
       const [i, j] = point
-      const pointMode = getPointMode(this.minPointsScore[i][j])
-      const { l5, l4, d4, l3, d3, l2, d2 } = pointMode
+      let directionZeroMode = getPointMode(this.minPointsScore[i][j][0])
+      const directionOneMode = getPointMode(this.minPointsScore[i][j][1])
+      const directionTwoMode = getPointMode(this.minPointsScore[i][j][2])
+      const directionThreeMode = getPointMode(this.minPointsScore[i][j][3])
+      // 四个方向累加
+      const allMode = { ...directionZeroMode }
+      allMode.l5 += directionZeroMode.l5 + directionOneMode.l5 + directionTwoMode.l5 + directionThreeMode.l5
+      allMode.l4 += directionZeroMode.l4 + directionOneMode.l4 + directionTwoMode.l4 + directionThreeMode.l4
+      allMode.d4 += directionZeroMode.d4 + directionOneMode.d4 + directionTwoMode.d4 + directionThreeMode.d4
+      allMode.l3 += directionZeroMode.l3 + directionOneMode.l3 + directionTwoMode.l3 + directionThreeMode.l3
+      allMode.d3 += directionZeroMode.d3 + directionOneMode.d3 + directionTwoMode.d3 + directionThreeMode.d3
+      allMode.l2 += directionZeroMode.l2 + directionOneMode.l2 + directionTwoMode.l2 + directionThreeMode.l2
+      allMode.d2 += directionZeroMode.d2 + directionOneMode.d2 + directionTwoMode.d2 + directionThreeMode.d2
+      allMode.l1 += directionZeroMode.l1 + directionOneMode.l1 + directionTwoMode.l1 + directionThreeMode.l1
+      const { l5, l4, d4, l3, d3, l2, d2, l1 } = allMode
+      console.log({ allMode, directionZeroMode, directionOneMode, directionTwoMode, directionThreeMode })
       if (l5) minL5.push(point)
       else if (l4) minL4.push(point)
       else if (l3 && d4) minD4L3.push(point)
@@ -540,7 +584,7 @@ export class Gobang {
     }
   }
 
-  // !!!!!!!!   node3, node4 可以各删除 首尾四行
+  // !!!!!!!!   node2, node3 可以各删除 首尾四行
   // 完了尝试 下棋时更新4行评分, 看看两者效率差距
   // 记录行列, 只更新下过子的地方?
   evaluate(kill, log) {
@@ -652,11 +696,11 @@ export class Gobang {
             // 出现两个空位, 截断, 计分
             piece <<= 1
             // 下一个还是空位
-            if ((line & 0b1100) === EMPTY && i != 14) piece <<= 1
+            if ((line & 0b1100) === EMPTY && i !== 14) piece <<= 1
             readAndCountScore(chess, piece)
             // 被空位截断的, 后续读子时要把空位算上
             piece = 0b100
-            if ((line & 0b1100) === EMPTY && i != 14) piece <<= 1
+            if ((line & 0b1100) === EMPTY && i !== 14) piece <<= 1
             // console.error(line & (0b11 << (2 * (i - 2))), { p: piece.toString(2) })
             emptyCount = 0
             isBreak = true
@@ -680,15 +724,15 @@ export class Gobang {
     // log && console.log(check(MIN, MAX, 0b10001000100000000000))
     // return
     // max
+    for (let a = 0; a < this.node0.length; a++) check(MAX, MIN, this.node0[a])
     for (let a = 0; a < this.node1.length; a++) check(MAX, MIN, this.node1[a])
     for (let a = 0; a < this.node2.length; a++) check(MAX, MIN, this.node2[a])
     for (let a = 0; a < this.node3.length; a++) check(MAX, MIN, this.node3[a])
-    for (let a = 0; a < this.node4.length; a++) check(MAX, MIN, this.node4[a])
     // min
+    for (let a = 0; a < this.node0.length; a++) check(MIN, MAX, this.node0[a])
     for (let a = 0; a < this.node1.length; a++) check(MIN, MAX, this.node1[a])
     for (let a = 0; a < this.node2.length; a++) check(MIN, MAX, this.node2[a])
     for (let a = 0; a < this.node3.length; a++) check(MIN, MAX, this.node3[a])
-    for (let a = 0; a < this.node4.length; a++) check(MIN, MAX, this.node4[a])
 
     if (log) {
       console.log({ maxL1, maxD2, maxL2, maxD3, maxL3, maxD4, maxL4, maxL5 })
@@ -775,10 +819,10 @@ export class Gobang {
   }
 
   printNode() {
+    console.log(this.node0.map((x) => x.toString(2)))
     console.log(this.node1.map((x) => x.toString(2)))
     console.log(this.node2.map((x) => x.toString(2)))
     console.log(this.node3.map((x) => x.toString(2)))
-    console.log(this.node4.map((x) => x.toString(2)))
   }
 
   // 统计性能优化数据
