@@ -13,13 +13,14 @@ var chessboard = new Chessboard(boardLength, boardLength)
 
 let gobang = new Gobang({ boardLength })
 
-const Square = ({ position, value, onClick, className }) => {
+const Square = ({ position, value, onClick, isLastChess, isMarkPoint }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
   return (
-    <button className={`square ${className}`} onClick={onClick}>
+    <button className={`square ${isLastChess && 'lastChess'}`} onClick={onClick}>
       {value !== Gobang.EMPTY && (
         <div className={`chess chess-${value === gobang.firstHand ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
       )}
+      {isMarkPoint && <div className="markPoint"></div>}
     </button>
   )
 }
@@ -38,20 +39,28 @@ const Board = ({ squares, onClick }) => {
           <div key={x} className="item" />
         ))}
       </div>
-      <div></div>
-      {range0(boardLength).map((i) => (
-        <div key={i} className="board-row">
-          {range0(boardLength).map((j) => (
-            <Square
-              key={j}
-              position={[i, j]}
-              value={squares[i][j]}
-              className={lastChess && lastChess[0] === i && lastChess[1] === j ? 'lastChess' : null}
-              onClick={() => onClick(i, j)}
-            />
-          ))}
-        </div>
-      ))}
+      <div className="chesses">
+        {range0(boardLength).map((i) => (
+          <div key={i} className="boardRow">
+            {range0(boardLength).map((j) => (
+              <Square
+                key={j}
+                position={[i, j]}
+                value={squares[i][j]}
+                isLastChess={lastChess && lastChess[0] === i && lastChess[1] === j}
+                isMarkPoint={
+                  (i === 3 && j === 3) ||
+                  (i === 3 && j === 11) ||
+                  (i === 7 && j === 7) ||
+                  (i === 11 && j === 3) ||
+                  (i === 11 && j === 11)
+                }
+                onClick={() => onClick(i, j)}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -100,7 +109,7 @@ const Game = () => {
 
   return (
     <div className="game">
-      <div className="game-board">
+      <div className="gameBoard">
         <Num />
         <div className="center">
           <ABC />
