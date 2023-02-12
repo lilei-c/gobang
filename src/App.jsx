@@ -1,12 +1,13 @@
-import { useEffect } from 'react'
 import { useState } from 'react'
 import { boardLength } from './bot/const'
-import { arrayN, debounce } from './bot/support'
+import { debounce, range0 } from './bot/support'
 import { Gobang } from './bot/minimax'
-import './App.css'
+import './App.less'
 import './bot/otherFivechess'
 import { Chessboard } from './bot/otherFivechess'
 import { useReducer } from 'react'
+import Num from './comps/num'
+import ABC from './comps/abc'
 
 var chessboard = new Chessboard(boardLength, boardLength)
 
@@ -16,8 +17,6 @@ const Square = ({ position, value, onClick, className }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
   return (
     <button className={`square ${className}`} onClick={onClick}>
-      <div className="square-line"></div>
-      <div className="square-line rotate90"></div>
       {value !== Gobang.EMPTY && (
         <div className={`chess chess-${value === gobang.firstHand ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
       )}
@@ -28,10 +27,21 @@ const Square = ({ position, value, onClick, className }) => {
 const Board = ({ squares, onClick }) => {
   const lastChess = gobang.lastChessPosition
   return (
-    <div>
-      {arrayN(boardLength).map((_, i) => (
+    <div className="boardCenter">
+      <div className="rowLines">
+        {range0(boardLength).map((x) => (
+          <div key={x} className="item" />
+        ))}
+      </div>
+      <div className="colLines">
+        {range0(boardLength).map((x) => (
+          <div key={x} className="item" />
+        ))}
+      </div>
+      <div></div>
+      {range0(boardLength).map((i) => (
         <div key={i} className="board-row">
-          {arrayN(boardLength).map((_, j) => (
+          {range0(boardLength).map((j) => (
             <Square
               key={j}
               position={[i, j]}
@@ -73,9 +83,13 @@ const Game = () => {
     chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
   }
 
-  const onStart = () => {
+  const onReStart = () => {
+    startX(false)
+  }
+
+  const onStart = (role) => {
     startX(true)
-    gobang = new Gobang({ firstHand: Gobang.MAX })
+    gobang = new Gobang({ firstHand: role })
     window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
     if (gobang.firstHand === Gobang.MAX) maxGo()
@@ -87,10 +101,18 @@ const Game = () => {
   return (
     <div className="game">
       <div className="game-board">
-        <Board squares={gobang.node} onClick={debounce(onClickBoard, 50)} />
+        <Num />
+        <div className="center">
+          <ABC />
+          <Board squares={gobang.node} onClick={debounce(onClickBoard, 50)} />
+          <ABC />
+        </div>
+        <Num />
       </div>
       <div className="opbtns">
-        <button onClick={onStart}>{start ? '重来' : '开始'}</button>
+        {start && <button onClick={onReStart}>重来</button>}
+        {!start && <button onClick={() => onStart(Gobang.MAX)}>开始 - 电脑先</button>}
+        {!start && <button onClick={() => onStart(Gobang.MIN)}>开始 - 玩家先</button>}
         {start && (
           <button
             onClick={() => {
