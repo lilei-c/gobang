@@ -13,12 +13,16 @@ var chessboard = new Chessboard(boardLength, boardLength)
 
 let gobang = new Gobang({ boardLength })
 
-const Square = ({ position, value, onClick, isLastChess, isMarkPoint }) => {
+const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPoint }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
   return (
     <button className={`square ${isLastChess && 'lastChess'}`} onClick={onClick}>
       {value !== Gobang.EMPTY && (
-        <div className={`chess chess-${value === gobang.firstHand ? 'black' : 'white'}`}>{stackIndex + 1 || null}</div>
+        <div
+          className={['chess', value === gobang.firstHand ? 'black' : 'white', isWinnerPoint ? 'pulse' : ''].join(' ')}
+        >
+          {stackIndex + 1 || null}
+        </div>
       )}
       {isMarkPoint && <div className="markPoint"></div>}
     </button>
@@ -27,6 +31,8 @@ const Square = ({ position, value, onClick, isLastChess, isMarkPoint }) => {
 
 const Board = ({ squares, onClick }) => {
   const lastChess = gobang.lastChessPosition
+  const winnerPositions = gobang.winner ? gobang.winnerPositions : null
+
   return (
     <div className="boardCenter">
       <div className="rowLines">
@@ -48,6 +54,7 @@ const Board = ({ squares, onClick }) => {
                 position={[i, j]}
                 value={squares[i][j]}
                 isLastChess={lastChess && lastChess[0] === i && lastChess[1] === j}
+                isWinnerPoint={winnerPositions && winnerPositions.some(([pi, pj]) => pi === i && pj === j)}
                 isMarkPoint={
                   (i === 3 && j === 3) ||
                   (i === 3 && j === 11) ||
@@ -93,7 +100,8 @@ const Game = () => {
   const maxGo = () => {
     const score = gobang.maxGo()
     forceUpdate()
-    chessboard.put(score[1][0], score[1][1], Chessboard.MAX)
+    const { i, j } = score
+    chessboard.put(i, j, Chessboard.MAX)
   }
 
   const onReStart = () => {
@@ -139,8 +147,8 @@ const Game = () => {
       </div>
       <div className="game-info">
         <div>{isFinal && 'game over'}</div>
-        <div>{winner && `${winner === Gobang.MAX ? 'bot' : 'human'} 胜出`}</div>
-        <div>{isDraw && '平局'}</div>
+        <div>{winner && `${winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}`}</div>
+        <div>{isDraw && '和棋~'}</div>
         <ol>{/* TODO */}</ol>
       </div>
     </div>

@@ -24,7 +24,7 @@ export class Gobang {
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
     this.seekDepth = 4
-    this.seekKillDepth = 11 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.seekKillDepth = 19 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
   static MIN = MIN
@@ -81,11 +81,10 @@ export class Gobang {
     }
   }
 
-  put(position, role) {
-    const [i, j] = position
+  put(i, j, role) {
     this.node[i][j] = role
     this.zobrist.go(i, j, role === MAX)
-    this.stack.push(position)
+    this.stack.push([i, j])
 
     // 横
     this.node0[i] = this.node0[i] | (role << (2 * (14 - j)))
@@ -132,7 +131,7 @@ export class Gobang {
       console.timeEnd('thinking kill')
     }
     // 前几个落子剪枝效率不高, 搜索层数少点
-    if (score && score[0] >= Score.win) {
+    if (score?.score >= Score.win) {
       console.warn('算杀成功 :)')
     } else {
       console.time('thinking')
@@ -140,7 +139,8 @@ export class Gobang {
       console.timeEnd('thinking')
     }
     console.log({ score })
-    this.put(score[1], MAX)
+    const { i, j } = score
+    this.put(i, j, MAX)
     this.logStats()
     console.log('score', this.evaluate(false, true))
     return score
@@ -149,7 +149,7 @@ export class Gobang {
   minGo(i, j) {
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
-    this.put([i, j], MIN)
+    this.put(i, j, MIN)
     console.log('score', this.evaluate())
     return true
   }
@@ -213,18 +213,22 @@ export class Gobang {
   minimax(depth, kill, alpha = -Infinity, beta = Infinity, isMax = true) {
     if (this.isFinal || depth === 0) {
       const score = this.evaluate(kill)
-      return [score, null]
+      return { score, depth }
     }
     const orderedPoints = this.orderPoints(this.getAllOptimalNextStep(), isMax ? MAX : MIN, kill)
+    if (!orderedPoints?.length) return { score: 0 }
     if (isMax) {
       let val = -Infinity
-      let nextPosition = orderedPoints && orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
+      let nextPosition = orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
+      let sdepth
       for (const childPosition of orderedPoints) {
-        this.put(childPosition, MAX)
+        const [i, j] = childPosition
+        this.put(i, j, MAX)
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
         if (childVal === undefined) {
-          childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
+          const score = this.minimax(depth - 1, kill, alpha, beta, !isMax)
+          childVal = score.score
           this.zobrist.set(childVal)
           this.enableStats && this.stats.zobrist.miss++
         } else {
@@ -242,16 +246,19 @@ export class Gobang {
           break
         }
       }
-      return [val, nextPosition]
+      const [i, j] = nextPosition
+      return { score: val, i, j }
     } else {
       let val = Infinity
-      let nextPosition = orderedPoints && orderedPoints[0]
+      let nextPosition = orderedPoints[0]
       for (const childPosition of orderedPoints) {
-        this.put(childPosition, MIN)
+        const [i, j] = childPosition
+        this.put(i, j, MIN)
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
         if (childVal === undefined) {
-          childVal = this.minimax(depth - 1, kill, alpha, beta, !isMax)[0]
+          const score = this.minimax(depth - 1, kill, alpha, beta, !isMax)
+          childVal = score.score
           this.zobrist.set(childVal)
           this.enableStats && this.stats.zobrist.miss++
         } else {
@@ -269,7 +276,8 @@ export class Gobang {
           break
         }
       }
-      return [val, nextPosition]
+      const [i, j] = nextPosition
+      return { score: val, i, j }
     }
   }
 
@@ -341,32 +349,34 @@ export class Gobang {
     return [rst0, rst1, rst2, rst3]
   }
 
-  getPositionsInFourDirection(i, j) {
+  getPositionsInFourDirection(centerI, centerJ) {
     let rst0 = []
     let rst1 = []
     let rst2 = []
     let rst3 = []
-    const minI = i - 4 > 0 ? i - 4 : 0
-    const maxI = i + 4 < boardLength - 1 ? i + 4 : boardLength - 1
-    const minJ = j - 4 > 0 ? j - 4 : 0
-    const maxJ = j + 4 < boardLength - 1 ? j + 4 : boardLength - 1
+    const minI = centerI - 4 > 0 ? centerI - 4 : 0
+    const maxI = centerI + 4 < boardLength - 1 ? centerI + 4 : boardLength - 1
+    const minJ = centerJ - 4 > 0 ? centerJ - 4 : 0
+    const maxJ = centerJ + 4 < boardLength - 1 ? centerJ + 4 : boardLength - 1
     // 横
-    for (let j = minJ; j <= maxJ; j++) {
-      rst0.push([i, j])
-    }
+    for (let j = minJ; j <= maxJ; j++) rst0.push([centerI, j])
     // 竖
-    for (let i = minI; i <= maxI; i++) {
-      rst1.push([i, j])
-    }
+    for (let i = minI; i <= maxI; i++) rst1.push([i, centerJ])
     // 左斜
+    for (let a = 4; a > 0; a--) {
+      if (centerI - a >= minI && centerJ + a <= maxJ) rst2.push([centerI - a, centerJ + a])
+    }
+    rst2.push([centerI, centerJ])
     for (let a = 1; a <= 4; a++) {
-      if (i - a >= minI && j + a <= maxJ) rst2.push([i - a, j + a])
-      if (i + a <= maxI && j - a >= minJ) rst2.push([i + a, j - a])
+      if (centerI + a <= maxI && centerJ - a >= minJ) rst2.push([centerI + a, centerJ - a])
     }
     // 右斜
+    for (let a = 4; a > 0; a--) {
+      if (centerI - a >= minI && centerJ - a >= minJ) rst3.push([centerI - a, centerJ - a])
+    }
+    rst3.push([centerI, centerJ])
     for (let a = 1; a <= 4; a++) {
-      if (i + a <= maxI && j + a <= maxJ) rst3.push([i + a, j + a])
-      if (i - a >= minI && j - a >= minJ) rst3.push([i - a, j - a])
+      if (centerI + a <= maxI && centerJ + a <= maxJ) rst3.push([centerI + a, centerJ + a])
     }
     return [rst0, rst1, rst2, rst3]
   }
@@ -529,7 +539,7 @@ export class Gobang {
         // 双三可以考虑一下
         if (maxDoubleL3.length && !minD4.length && !minD4L3.length) return maxDoubleL3
         // 考虑活三性能会很差
-        // if (maxL3.length) return maxL3
+        if (maxL3.length) return maxL3
         return []
       }
       // console.log({ kill, role, maxL5, minL5, maxL4, maxD4L3, minL4, minD4L3, maxDoubleL3, minDoubleL3 })
@@ -793,7 +803,7 @@ export class Gobang {
   }
 
   get winner() {
-    if (this.stack.length < 9) return null
+    if (this.stack.length < 7) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
     const mayBeWinner = this.getChess(lastI, lastJ)
     const chessInFourDirection = this.getChessInFourDirection(lastI, lastJ)
@@ -804,6 +814,30 @@ export class Gobang {
         if (chesses[j] === mayBeWinner) count++
         else count = 0
         if (count === 5) return mayBeWinner
+      }
+    }
+    return null
+  }
+
+  get winnerPositions() {
+    if (!this.winner) return null
+    const [lastI, lastJ] = this.stack[this.stack.length - 1]
+    const mayBeWinner = this.getChess(lastI, lastJ)
+    const chessInFourDirection = this.getPositionsInFourDirection(lastI, lastJ)
+    for (let a = 0; a < 4; a++) {
+      const positions = chessInFourDirection[a]
+      let count = 0
+      let rst = []
+      for (let b = 0; b < positions.length; b++) {
+        const [i, j] = positions[b]
+        if (this.getChess(i, j) === mayBeWinner) {
+          count++
+          rst.push([i, j])
+        } else {
+          count = 0
+          rst = []
+        }
+        if (count === 5) return rst
       }
     }
     return null

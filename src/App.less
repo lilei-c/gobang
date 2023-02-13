@@ -84,25 +84,36 @@
               background-color: #555;
               border-radius: 50%;
             }
-          }
-          .chess {
-            width: 24px;
-            height: 24px;
-            position: absolute;
-            border-radius: 50%;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-          }
-          .chess-white {
-            background: #fff;
-            color: #cbb4b4;
-          }
-          .chess-black {
-            background: #000;
-            color: #9d9d9d;
+            .chess {
+              width: 24px;
+              height: 24px;
+              position: absolute;
+              border-radius: 50%;
+              font-size: 14px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 10;
+            }
+            .white {
+              background: #fff;
+              color: #cbb4b4;
+            }
+            .black {
+              background: #000;
+              color: #9d9d9d;
+            }
+            .pulse {
+              animation: pulse 1.3s infinite;
+            }
+            @keyframes pulse {
+              0% {
+                opacity: 1;
+              }
+              50% {
+                opacity: 0.1;
+              }
+            }
           }
           .lastChess {
             background-color: #bbb;
