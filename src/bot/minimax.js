@@ -23,8 +23,8 @@ export class Gobang {
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
-    this.seekDepth = 2
-    this.seekKillDepth = 1 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.seekDepth = 4
+    this.seekKillDepth = 11 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
   static MIN = MIN
@@ -324,7 +324,7 @@ export class Gobang {
       if (direction === 2) return rst2
     }
     // 右斜
-    if (direction === undefined || direction === 2) {
+    if (direction === undefined || direction === 3) {
       const rr = this.node3[14 + centerI - centerJ]
       const rr1 = centerI >= 4 ? (rr >> (2 * (18 - centerI))) & 0b11 : 0b11
       const rr2 = centerI >= 3 ? (rr >> (2 * (17 - centerI))) & 0b11 : 0b11
@@ -365,12 +365,8 @@ export class Gobang {
     }
     // 右斜
     for (let a = 1; a <= 4; a++) {
-      if (i + a <= maxI && j + a <= maxJ) {
-        rst3.push([i + a, j + a])
-      }
-      if (i - a >= minI && j - a >= minJ) {
-        rst3.push([i - a, j - a])
-      }
+      if (i + a <= maxI && j + a <= maxJ) rst3.push([i + a, j + a])
+      if (i - a >= minI && j - a >= minJ) rst3.push([i - a, j - a])
     }
     return [rst0, rst1, rst2, rst3]
   }
@@ -378,7 +374,6 @@ export class Gobang {
   // i,j 米字线上的点都需要更新
   updateFourLineScore(i, j) {
     const positionsInFourDirection = this.getPositionsInFourDirection(i, j)
-    // console.log(fourLinePoints)
     for (let direction = 0; direction < 4; direction++) {
       const positions = positionsInFourDirection[direction]
       for (let index = 0; index < positions.length; index++) {
@@ -432,6 +427,10 @@ export class Gobang {
     let minL2 = []
     let maxD2 = []
     let minD2 = []
+    let maxL14 = []
+    let minL14 = []
+    let maxL13 = []
+    let minL13 = []
     // 不构成棋型的点
     let maxOtherNoMatter = []
     let minOtherNoMatter = []
@@ -477,6 +476,8 @@ export class Gobang {
       else if (l2) maxL2.push(point)
       else if (d3) maxD3.push(point)
       else if (d2) maxD2.push(point)
+      else if (l1 === 4) maxL14.push(point)
+      else if (l1 === 3) maxL13.push(point)
       else maxOtherNoMatter.push(point)
     }
 
@@ -499,7 +500,7 @@ export class Gobang {
       allMode.d2 += directionZeroMode.d2 + directionOneMode.d2 + directionTwoMode.d2 + directionThreeMode.d2
       allMode.l1 += directionZeroMode.l1 + directionOneMode.l1 + directionTwoMode.l1 + directionThreeMode.l1
       const { l5, l4, d4, l3, d3, l2, d2, l1 } = allMode
-      console.log({ allMode, directionZeroMode, directionOneMode, directionTwoMode, directionThreeMode })
+      // console.log({ allMode, directionZeroMode, directionOneMode, directionTwoMode, directionThreeMode })
       if (l5) minL5.push(point)
       else if (l4) minL4.push(point)
       else if (l3 && d4) minD4L3.push(point)
@@ -511,6 +512,8 @@ export class Gobang {
       else if (l2) minL2.push(point)
       else if (d3) minD3.push(point)
       else if (d2) minD2.push(point)
+      else if (l1 === 4) minL14.push(point)
+      else if (l1 === 3) minL13.push(point)
       else minOtherNoMatter.push(point)
     }
 
@@ -547,13 +550,15 @@ export class Gobang {
         .concat(minDoubleL2)
         .concat(maxD4)
         .concat(minD4)
-        .concat(maxL2)
-        .concat(minL2)
-        .concat(maxOtherNoMatter)
         .concat(maxD3)
         .concat(minD3)
+        .concat(maxL2)
+        .concat(minL2)
+        .concat(maxL14)
+        .concat(maxL13)
         .concat(maxD2)
         .concat(minD2)
+        .concat(maxOtherNoMatter)
       return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
     } else {
       if (minL5.length) return minL5
@@ -573,13 +578,15 @@ export class Gobang {
         .concat(maxDoubleL2)
         .concat(minD4)
         .concat(maxD4)
-        .concat(minL2)
-        .concat(maxL2)
-        .concat(minOtherNoMatter)
         .concat(minD3)
         .concat(maxD3)
+        .concat(minL2)
+        .concat(maxL2)
+        .concat(minL14)
+        .concat(minL13)
         .concat(minD2)
         .concat(maxD2)
+        .concat(minOtherNoMatter)
       return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
     }
   }
@@ -639,7 +646,7 @@ export class Gobang {
           case l5:
             return maxL5++
           default:
-            return console.erroe('error')
+            return console.error('error')
         }
       } else {
         switch (pieceMode) {
@@ -662,7 +669,7 @@ export class Gobang {
           case l5:
             return minL5++
           default:
-            return console.erroe('error')
+            return console.error('error')
         }
       }
     }
@@ -781,7 +788,7 @@ export class Gobang {
       Score.d2 * minD2 +
       Score.l1 * minD2
     // 后手时, 加强防守
-    let score = maxScore - minScore * (this.firstHand === MIN ? 5 : 1)
+    let score = maxScore - minScore * (this.firstHand === MIN ? 2 : 1)
     return score
   }
 
@@ -837,7 +844,7 @@ export class Gobang {
           const { all, eva, cut } = this.stats.abCut
           const realCut = all - eva
           // 节点总数是理论最大值, 实际达不到 (对弈到某一步时, 例如对手已有冲四, 或己方能形成活四, 则下一步只有唯一的选择)
-          return `AB剪枝 最大节点总数:${all} 理论最少评估${all ** 0.5} 实际评估:${eva} 剪去:${cut}/${realCut}`
+          return `AB剪枝 最大节点总数:${all} 理论最少评估${(all ** 0.5) >> 0} 实际评估:${eva} 剪去:${cut}/${realCut}`
         },
       },
       zobrist: {
