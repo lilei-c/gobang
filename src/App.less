@@ -135,3 +135,55 @@
 .opbtns button {
   margin: 0 20px;
 }
+
+.gameoverTip {
+  pointer-events: none;
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  font-size: 34px;
+  .tip {
+    position: absolute;
+    padding: 10px;
+    background-color: black;
+    color: #fff;
+    z-index: 100;
+    animation: bounceInDown 6s;
+    transform: translate3d(0, -3000px, 0) scaleY(3);
+  }
+}
+@keyframes bounceInDown {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -3000px, 0) scaleY(3);
+  }
+  10% {
+    opacity: 1;
+    transform: translate3d(0, 25px, 0) scaleY(0.9);
+  }
+  15% {
+    transform: translate3d(0, -10px, 0) scaleY(0.95);
+  }
+  20% {
+    transform: translate3d(0, 0, 0) scaleY(0.985);
+  }
+  50% {
+    transform: translate3d(0, 0, 0) scaleY(0.985);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translate3d(-6px, 0, 0) scaleX(1);
+  }
+  90% {
+    opacity: 1;
+    transform: translate3d(1000px, 0, 0) scaleX(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(2000px, 0, 0) scaleX(1);
+  }
+}

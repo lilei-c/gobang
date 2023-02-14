@@ -29,9 +29,9 @@ const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPo
   )
 }
 
-const Board = ({ squares, onClick }) => {
+const Board = ({ squares, onClick, winner }) => {
   const lastChess = gobang.lastChessPosition
-  const winnerPositions = gobang.winner ? gobang.winnerPositions : null
+  const winnerPositions = winner ? gobang.winnerPositions : null
 
   return (
     <div className="boardCenter">
@@ -67,6 +67,10 @@ const Board = ({ squares, onClick }) => {
             ))}
           </div>
         ))}
+      </div>
+      <div className="gameoverTip">
+        {gobang.isDraw && <div className="tip">和棋~</div>}
+        {winner && <div className="tip">{winner === gobang.firstHand ? '黑方胜' : '白方胜'}</div>}
       </div>
     </div>
   )
@@ -125,7 +129,7 @@ const Game = () => {
         <Num />
         <div className="center">
           <ABC />
-          <Board squares={gobang.node} onClick={debounce(onClickBoard, 50)} />
+          <Board squares={gobang.node} onClick={debounce(onClickBoard, 50)} winner={winner} />
           <ABC />
         </div>
         <Num />
@@ -147,8 +151,7 @@ const Game = () => {
       </div>
       <div className="game-info">
         <div>{isFinal && 'game over'}</div>
-        <div>{winner && `${winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}`}</div>
-        <div>{isDraw && '和棋~'}</div>
+        {winner && <div>{winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}</div>}
         <ol>{/* TODO */}</ol>
       </div>
     </div>

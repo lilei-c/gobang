@@ -18,7 +18,7 @@ export class Gobang {
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
-    this.seekDepth = 4
+    this.seekDepth = 2
     this.seekKillDepth = 19 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
