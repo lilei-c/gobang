@@ -1,155 +1,204 @@
-// import { boardLength, empty } from './const'
-// import { theModesDeepArr } from './generateModes'
-// import { theIndexArray } from './generateIndexArray'
+import { MAX, MIN, WALL, EMPTY } from './const'
+import { chessModeBit, serialPointMode, Score } from './genLineScore'
+const { l1, d2, l2, l2x2, d3, l3, d4, l4, l5 } = chessModeBit
 
-// const dead2 = 5
-// const dead3 = 50
-// const live2 = 100
-// const dead4 = 500
-// const live3 = 500
-// const live4 = 10000
-// const moreLive3 = 1000
-// const moreNeLive3 = -moreLive3
-// const live3AndDead4 = 2000
-// const neLive3AndNeDead4 = -live3AndDead4
-// const live3AndLive4 = 3000
-// const neLive3AndNeLive4 = -live3AndLive4
-// const final5 = Infinity
-// const modeScores = {
-//   dead2: dead2,
-//   dead3: dead3,
-//   dead4: dead4,
-//   live2: live2,
-//   live3: live3,
-//   live4: live4,
-//   final5: final5,
-//   '-dead2': -dead2,
-//   '-dead3': -dead3,
-//   '-dead4': -dead4,
-//   '-live2': -live2,
-//   '-live3': -live3,
-//   '-live4': -live4,
-//   '-final5': -final5,
-// }
+// !!!!!!!!   node2, node3 可以各删除 首尾四行
+// 完了尝试 下棋时更新4行评分, 看看两者效率差距
+// 记录行列, 只更新下过子的地方?
+export function evaluate(kill, log) {
+  const winner = this.winner
+  if (winner === MAX) return Score.win
+  else if (winner === MIN) return -Score.win
+  if (kill) return 0 // 算杀结果必须是5连, 否则算杀失败
 
-// console.log({ theIndexArray })
-// const evaluate = (node, isMax) => {
-//   // return 1
-//   // console.log({ node })
-//   const sixIndexToSixNodeVal = (x) => {
-//     const a = x[0][0]
-//     const b = x[0][1]
-//     const x0 = node[a][b]
-//     const x1 = node[x[1][0]][x[1][1]]
-//     const x2 = node[x[2][0]][x[2][1]]
-//     const x3 = node[x[3][0]][x[3][1]]
-//     const x4 = node[x[4][0]][x[4][1]]
-//     const x5 = node[x[5][0]][x[5][1]]
-//     const aa = x0 + x1 * 10 + x2 * 100 + x3 * 1000 + x4 * 10000 + x5 * 100000
-//     // x5 可能为空 ?
-//     return theModesDeepArr[x0][x1][x2][x3][x4][x5 || empty]
-//   }
+  let maxL5 = 0
+  let maxL4 = 0
+  let maxD4 = 0
+  let maxL3 = 0
+  let maxD3 = 0
+  let maxL2 = 0
+  let maxD2 = 0
+  let maxL1 = 0
+  //
+  let minL5 = 0
+  let minL4 = 0
+  let minD4 = 0
+  let minL3 = 0
+  let minD3 = 0
+  let minL2 = 0
+  let minD2 = 0
+  let minL1 = 0
 
-//   let rowNodeVals = theIndexArray.row.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
-//   let colNodeVals = theIndexArray.col.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
-//   let leftDownNodeVals = theIndexArray.leftDown.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
-//   let rightDownNodeVals = theIndexArray.rightDown.map((line) => line.map(sixIndexToSixNodeVal).filter((x) => !!x))
-//   // console.log({ ...modes })
+  const readAndCountScore = (role, piece) => {
+    // 至少是活1
+    // log && console.log(piece.toString(2))
+    if (piece < 0b100010) return
+    const pieceMode = serialPointMode[piece]
+    if (!pieceMode) return
+    // log && console.warn(pieceMode.toString(2))
+    if (role === MAX) {
+      switch (pieceMode) {
+        case l1:
+          return maxL1++
+        case d2:
+          return maxD2++
+        case l2:
+          return maxL2++
+        case l2x2:
+          return (maxL2 += 2)
+        case d3:
+          return maxD3++
+        case l3:
+          return maxL3++
+        case d4:
+          return maxD4++
+        case l4:
+          return maxL4++
+        case l5:
+          return maxL5++
+        default:
+          return console.error('error')
+      }
+    } else {
+      switch (pieceMode) {
+        case l1:
+          return minL1++
+        case d2:
+          return minD2++
+        case l2:
+          return minL2++
+        case l2x2:
+          return (minL2 += 2)
+        case d3:
+          return minD3++
+        case l3:
+          return minL3++
+        case d4:
+          return minD4++
+        case l4:
+          return minL4++
+        case l5:
+          return minL5++
+        default:
+          return console.error('error')
+      }
+    }
+  }
 
-//   /**  现有匹配模式会出现重复统计的情况, 例如 0011100 会被统计成2个活三, 所以需要去除重 (不去重无法给双三增加额外分数, 本身也不准确),
-//    * 但经过思考会发现, `同一行`几乎不可能出现双三 (因为落子时优先形成活四而不是双活三, 所以双活三只能是被迫防守, 这还需要防守完成后,
-//    * 对方仍能持续四子进攻, 不然它就快要输了)
-//    *
-//    * 所以, 活三去重的简单办法就是 每一行只统计一次
-//    *
-//    * 活四: 不会重复
-//    * 冲四: 没细想, 但应该和活三差不多道理, 先直接去重
-//    * 死三, 活二, 死二: 权重不大, 暂不处理
-//    */
-//   let allChessMode = []
-//   const getChessMode = (line) => {
-//     let haveLive3 = false
-//     let haveNeLive3 = false
-//     let haveDead4 = false
-//     let haveNeDead4 = false
-//     line.forEach((sixPointVal) => {
-//       if (sixPointVal === 'live3') {
-//         if (haveLive3) return
-//         haveLive3 = true
-//         return allChessMode.push(sixPointVal)
-//       }
-//       if (sixPointVal === '-live3') {
-//         if (haveNeLive3) return
-//         haveNeLive3 = true
-//         return allChessMode.push(sixPointVal)
-//       }
-//       if (sixPointVal === 'dead4') {
-//         if (haveDead4) return
-//         haveDead4 = true
-//         return allChessMode.push(sixPointVal)
-//       }
-//       if (sixPointVal === '-dead4') {
-//         if (haveNeDead4) return
-//         haveNeDead4 = true
-//         return allChessMode.push(sixPointVal)
-//       }
-//       allChessMode.push(sixPointVal)
-//     })
-//   }
-//   // console.log({ rowNodeVals, colNodeVals, leftDownNodeVals, rightDownNodeVals })
-//   rowNodeVals.forEach(getChessMode)
-//   colNodeVals.forEach(getChessMode)
-//   leftDownNodeVals.forEach(getChessMode)
-//   rightDownNodeVals.forEach(getChessMode)
+  const check = (chess, block, line) => {
+    let piece = 0b1
+    let emptyCount = 0
+    let isBreak = false
 
-//   let rst = 0
-//   let live3Count = 0
-//   let neLive3Count = 0
-//   let dead4Count = 0
-//   let neDead4Count = 0
-//   let live4Count = 0
-//   let neLive4Count = 0
-//   allChessMode.forEach((x) => {
-//     const a = modeScores[x]
-//     rst += a
-//     if (x === 'live3') live3Count++
-//     if (x === '-live3') neLive3Count++
-//     if (x === 'dead4') dead4Count++
-//     if (x === '-dead4') neDead4Count++
-//     if (x === 'live4') live4Count++
-//     if (x === '-live4') neLive4Count++
-//   })
+    // 评分是用的连续11子的评分, 这里一行有 15 个子, 能行么?
+    // 大概率可行? , 一行超过连续 11子只有某一方棋子和单个空格, 这个概率很低
+    // 010101010, 最多是这样连续11子, 两边不可能再加了, 因为 max 不可能下两边不下中间
+    // 0101000101 只能是类似这种, 中间先空出来, 最后在中间落子, 这个概率很低吧?
+    // 如果要非常严谨, 可以把超过11子的情况也加到 Score map 中去
+    // console.log(line.toString(2))
+    for (let i = 0; i < 15; i++) {
+      const val = line & 0b11
+      // log && console.log('val', val.toString(2))
+      line >>= 2
+      if (val === block || val === WALL) {
+        // 截断, 读分
+        readAndCountScore(chess, piece)
+        piece = 0b1
+        isBreak = true
+        continue
+      } else if (val === EMPTY) {
+        if (emptyCount === 0) {
+          emptyCount++
+          piece <<= 1
+        } else {
+          // 出现两个空位, 截断, 计分
+          piece <<= 1
+          // 下一个还是空位
+          if ((line & 0b1100) === EMPTY && i !== 14) piece <<= 1
+          readAndCountScore(chess, piece)
+          // 被空位截断的, 后续读子时要把空位算上
+          piece = 0b100
+          if ((line & 0b1100) === EMPTY && i !== 14) piece <<= 1
+          // console.error(line & (0b11 << (2 * (i - 2))), { p: piece.toString(2) })
+          emptyCount = 0
+          isBreak = true
+          continue
+        }
+      } else {
+        emptyCount = 0
+        isBreak = false
+        piece <<= 1
+        piece += 1
+        // console.warn({ p: piece.toString(2) })
+      }
+    }
+    // 读分, 这里要判断结束时是否是被截断, 防止重复计分
+    if (!isBreak) {
+      readAndCountScore(chess, piece)
+    }
+  }
 
-//   // max方获胜不再考虑对手下棋
-//   if (rst === Infinity) return Infinity
+  // console.log(check(MAX, MIN, 0b1011000000000001111))
+  // log && console.log(check(MIN, MAX, 0b10001000100000000000))
+  // return
+  // max
+  for (let a = 0; a < this.node0.length; a++) check(MAX, MIN, this.node0[a])
+  for (let a = 0; a < this.node1.length; a++) check(MAX, MIN, this.node1[a])
+  for (let a = 0; a < this.node2.length; a++) check(MAX, MIN, this.node2[a])
+  for (let a = 0; a < this.node3.length; a++) check(MAX, MIN, this.node3[a])
+  // min
+  for (let a = 0; a < this.node0.length; a++) check(MIN, MAX, this.node0[a])
+  for (let a = 0; a < this.node1.length; a++) check(MIN, MAX, this.node1[a])
+  for (let a = 0; a < this.node2.length; a++) check(MIN, MAX, this.node2[a])
+  for (let a = 0; a < this.node3.length; a++) check(MIN, MAX, this.node3[a])
 
-//   // 额外得分
-//   if (live3Count > 1) rst += moreLive3
-//   if (neLive3Count > 1) rst += moreNeLive3
-//   if (live3Count > 0 && dead4Count > 0) rst += live3AndDead4
-//   if (neLive3Count > 0 && neDead4Count > 0) rst += neLive3AndNeDead4
-//   if (live3Count > 0 && live4Count > 0) rst += live3AndLive4
-//   if (neLive3Count > 0 && neLive4Count > 0) rst += neLive3AndNeLive4
-//   // console.log({
-//   //   isMax,
-//   //   rst,
-//   //   allChessMode,
-//   //   modeScores,
-//   //   rowNodeVals,
-//   //   node: structuredClone(node),
-//   // })
+  if (log) {
+    console.log({ maxL1, maxD2, maxL2, maxD3, maxL3, maxD4, maxL4, maxL5 })
+    console.log({ minL1, minD2, minL2, minD3, minL3, minD4, minL4, minL5 })
+  }
 
-//   // 当搜索层数是奇数时, 搜索结束后下一步是对手走棋
-//   // 此时:
-//   // 对手已有四连, 则对手取胜
-//   // 对手已有活三, 我方无四连, 对手胜
-//   if (isMax) {
-//     if (neDead4Count || neLive4Count) return -Infinity
-//     if (neLive3Count) {
-//       if (!dead4Count && !live4Count) return -Infinity
-//     }
-//   }
-//   return rst
-// }
-
-// export { evaluate }
+  let maxScore = 0
+  let minScore = 0
+  // 搜索结束后, 下一个是谁下棋
+  const seekEndAndNextIsMax = (this.seekDepth & 0b1) === 0
+  if (seekEndAndNextIsMax) {
+    if (maxL4 || maxD4) return Score.l5
+    if (minL4) return -Score.l5
+    if (minL3 & minD4) return -Score.l5 // 不严谨, 有可能被一颗子拦截
+    if (maxL3) {
+      if (!minL4) maxScore += Score.l4
+      if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
+    }
+  } else {
+    if (minL4 || minD4) return -Score.l5
+    if (maxL4) return Score.l5
+    if (maxL3 & maxD4) return Score.l5 // 不严谨, 有可能被一颗子拦截
+    if (minL3) {
+      if (!maxL4) minScore += Score.l4
+      if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
+    }
+  }
+  if (maxL2 > 2) maxScore += Score.l2 // 额外奖励, 可调整
+  if (minL2 > 2) minScore += Score.l2 // 额外奖励, 可调整
+  maxScore =
+    Score.l5 * maxL5 +
+    Score.l4 * maxL4 +
+    Score.d4 * maxD4 +
+    Score.l3 * maxL3 +
+    Score.d3 * maxD3 +
+    Score.l2 * maxL2 +
+    Score.d2 * maxD2 +
+    Score.l1 * maxD2
+  minScore =
+    Score.l5 * minL5 +
+    Score.l4 * minL4 +
+    Score.d4 * minD4 +
+    Score.l3 * minL3 +
+    Score.d3 * minD3 +
+    Score.l2 * minL2 +
+    Score.d2 * minD2 +
+    Score.l1 * minD2
+  // 后手时, 加强防守
+  let score = maxScore - minScore * (this.firstHand === MIN ? 2 : 1)
+  return score
+}

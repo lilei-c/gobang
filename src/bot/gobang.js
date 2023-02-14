@@ -1,18 +1,13 @@
-import { boardLength, boardCenter } from './const'
-import { countLine, ninePointMode, Score, getPointMode, chessModeBit } from './genLineScore'
+import { MAX, MIN, WALL, EMPTY, boardLength, boardCenter } from './const'
+import { countLine, serialPointMode, Score } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
-
-const EMPTY = 0
-const MAX = 1
-const MIN = 2
-const WALL = 3
-const { l1, d2, l2, l2x2, d3, l3, d4, l4, l5 } = chessModeBit
+import { evaluate } from './evaluate'
+import { genChilds } from './genChilds'
 
 export class Gobang {
   constructor({ firstHand }) {
     this.totalChessPieces = boardLength * boardLength
-    this.node = arrayN(boardLength).map((_) => arrayN(boardLength, EMPTY))
     this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
@@ -82,7 +77,6 @@ export class Gobang {
   }
 
   put(i, j, role) {
-    this.node[i][j] = role
     this.zobrist.go(i, j, role === MAX)
     this.stack.push([i, j])
 
@@ -103,7 +97,6 @@ export class Gobang {
     while (steps-- > 0) {
       const [i, j] = this.stack.pop()
       this.zobrist.go(i, j, this.getChess(i, j) === MAX)
-      this.node[i][j] = EMPTY
 
       // 横
       const move1 = 2 * (14 - j)
@@ -142,7 +135,7 @@ export class Gobang {
     const { i, j } = score
     this.put(i, j, MAX)
     this.logStats()
-    console.log('score', this.evaluate(false, true))
+    console.log('score', evaluate.call(this, false, true))
     return score
   }
 
@@ -150,7 +143,7 @@ export class Gobang {
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
     this.put(i, j, MIN)
-    console.log('score', this.evaluate())
+    console.log('score', evaluate.call(this))
     return true
   }
 
@@ -212,15 +205,14 @@ export class Gobang {
 
   minimax(depth, kill, alpha = -Infinity, beta = Infinity, isMax = true) {
     if (this.isFinal || depth === 0) {
-      const score = this.evaluate(kill)
+      const score = evaluate.call(this, kill)
       return { score, depth }
     }
-    const orderedPoints = this.orderPoints(this.getAllOptimalNextStep(), isMax ? MAX : MIN, kill)
+    const orderedPoints = genChilds.call(this, this.getAllOptimalNextStep(), isMax, kill)
     if (!orderedPoints?.length) return { score: 0 }
     if (isMax) {
       let val = -Infinity
       let nextPosition = orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
-      let sdepth
       for (const childPosition of orderedPoints) {
         const [i, j] = childPosition
         this.put(i, j, MAX)
@@ -417,389 +409,9 @@ export class Gobang {
     const countFn = countLine(chess, block, WALL)
     let rst = 0
     const count = countFn(chessInFourDirection)
-    const score = ninePointMode[count]
+    const score = serialPointMode[count]
     rst += score || 0
     return rst
-  }
-
-  orderPoints(points, role, kill) {
-    let maxL5 = []
-    let minL5 = []
-    let maxL4 = []
-    let minL4 = []
-    let maxD4 = []
-    let minD4 = []
-    let maxL3 = []
-    let minL3 = []
-    let maxD3 = []
-    let minD3 = []
-    let maxL2 = []
-    let minL2 = []
-    let maxD2 = []
-    let minD2 = []
-    let maxL14 = []
-    let minL14 = []
-    let maxL13 = []
-    let minL13 = []
-    // 不构成棋型的点
-    let maxOtherNoMatter = []
-    let minOtherNoMatter = []
-    // 双三
-    let maxDoubleL3 = []
-    let minDoubleL3 = []
-    // 活三 + 冲四
-    let maxD4L3 = []
-    let minD4L3 = []
-    // 两个活二
-    let maxDoubleL2 = []
-    let minDoubleL2 = []
-    // 2个以上活二
-    let maxMoreL2 = []
-    let minMoreL2 = []
-
-    // max 棋型统计
-    for (let a = 0; a < points.length; a++) {
-      const point = points[a]
-      const [i, j] = point
-      let directionZeroMode = getPointMode(this.maxPointsScore[i][j][0])
-      const directionOneMode = getPointMode(this.maxPointsScore[i][j][1])
-      const directionTwoMode = getPointMode(this.maxPointsScore[i][j][2])
-      const directionThreeMode = getPointMode(this.maxPointsScore[i][j][3])
-      // 四个方向累加
-      directionZeroMode.l5 += directionOneMode.l5 + directionTwoMode.l5 + directionThreeMode.l5
-      directionZeroMode.l4 += directionOneMode.l4 + directionTwoMode.l4 + directionThreeMode.l4
-      directionZeroMode.d4 += directionOneMode.d4 + directionTwoMode.d4 + directionThreeMode.d4
-      directionZeroMode.l3 += directionOneMode.l3 + directionTwoMode.l3 + directionThreeMode.l3
-      directionZeroMode.d3 += directionOneMode.d3 + directionTwoMode.d3 + directionThreeMode.d3
-      directionZeroMode.l2 += directionOneMode.l2 + directionTwoMode.l2 + directionThreeMode.l2
-      directionZeroMode.d2 += directionOneMode.d2 + directionTwoMode.d2 + directionThreeMode.d2
-      directionZeroMode.l1 += directionOneMode.l1 + directionTwoMode.l1 + directionThreeMode.l1
-      const { l5, l4, d4, l3, d3, l2, d2, l1 } = directionZeroMode
-      if (l5) maxL5.push(point)
-      else if (l4) maxL4.push(point)
-      else if (l3 && d4) maxD4L3.push(point)
-      else if (l3 > 1) maxDoubleL3.push(point)
-      else if (l2 > 2) maxMoreL2.push(point)
-      else if (l3) maxL3.push(point)
-      else if (l2 > 1) maxDoubleL2.push(point)
-      else if (d4) maxD4.push(point)
-      else if (l2) maxL2.push(point)
-      else if (d3) maxD3.push(point)
-      else if (d2) maxD2.push(point)
-      else if (l1 === 4) maxL14.push(point)
-      else if (l1 === 3) maxL13.push(point)
-      else maxOtherNoMatter.push(point)
-    }
-
-    // min 棋型统计
-    for (let a = 0; a < points.length; a++) {
-      const point = points[a]
-      const [i, j] = point
-      let directionZeroMode = getPointMode(this.minPointsScore[i][j][0])
-      const directionOneMode = getPointMode(this.minPointsScore[i][j][1])
-      const directionTwoMode = getPointMode(this.minPointsScore[i][j][2])
-      const directionThreeMode = getPointMode(this.minPointsScore[i][j][3])
-      // 四个方向累加
-      const allMode = { ...directionZeroMode }
-      allMode.l5 += directionZeroMode.l5 + directionOneMode.l5 + directionTwoMode.l5 + directionThreeMode.l5
-      allMode.l4 += directionZeroMode.l4 + directionOneMode.l4 + directionTwoMode.l4 + directionThreeMode.l4
-      allMode.d4 += directionZeroMode.d4 + directionOneMode.d4 + directionTwoMode.d4 + directionThreeMode.d4
-      allMode.l3 += directionZeroMode.l3 + directionOneMode.l3 + directionTwoMode.l3 + directionThreeMode.l3
-      allMode.d3 += directionZeroMode.d3 + directionOneMode.d3 + directionTwoMode.d3 + directionThreeMode.d3
-      allMode.l2 += directionZeroMode.l2 + directionOneMode.l2 + directionTwoMode.l2 + directionThreeMode.l2
-      allMode.d2 += directionZeroMode.d2 + directionOneMode.d2 + directionTwoMode.d2 + directionThreeMode.d2
-      allMode.l1 += directionZeroMode.l1 + directionOneMode.l1 + directionTwoMode.l1 + directionThreeMode.l1
-      const { l5, l4, d4, l3, d3, l2, d2, l1 } = allMode
-      // console.log({ allMode, directionZeroMode, directionOneMode, directionTwoMode, directionThreeMode })
-      if (l5) minL5.push(point)
-      else if (l4) minL4.push(point)
-      else if (l3 && d4) minD4L3.push(point)
-      else if (l3 > 1) minDoubleL3.push(point)
-      else if (l2 > 2) minMoreL2.push(point)
-      else if (l3) minL3.push(point)
-      else if (l2 > 1) minDoubleL2.push(point)
-      else if (d4) minD4.push(point)
-      else if (l2) minL2.push(point)
-      else if (d3) minD3.push(point)
-      else if (d2) minD2.push(point)
-      else if (l1 === 4) minL14.push(point)
-      else if (l1 === 3) minL13.push(point)
-      else minOtherNoMatter.push(point)
-    }
-
-    if (role === MAX) {
-      if (kill) {
-        // 算杀只考虑 max 方连续进攻, min 方不需要判断算杀
-        if (maxL5.length) return maxL5
-        if (minL5.length) return []
-        if (maxL4.length) return maxL4
-        if (maxD4L3.length || maxD4.length) return maxD4L3.concat(maxD4)
-        if (minL4.length) return [] // minL4
-        if (minD4L3.length) return [] //minD4L3
-        // 双三可以考虑一下
-        if (maxDoubleL3.length && !minD4.length && !minD4L3.length) return maxDoubleL3
-        // 考虑活三性能会很差
-        if (maxL3.length) return maxL3
-        return []
-      }
-      // console.log({ kill, role, maxL5, minL5, maxL4, maxD4L3, minL4, minD4L3, maxDoubleL3, minDoubleL3 })
-      if (maxL5.length) return maxL5
-      if (minL5.length) return minL5
-      if (maxL4.length) return maxL4
-      if (maxD4L3.length) return maxD4L3
-      if (minL4.length) return minL4
-      if (minD4L3.length) return minD4L3
-      if (maxDoubleL3.length) return maxDoubleL3 // 双三可考虑对方是否有冲四且拦截己方双三
-      if (minDoubleL3.length) return minDoubleL3
-      // !! 这里的顺序和选子很重要, 影响棋力和剪枝效率, 最好和评估函数保持一致
-      const rst = maxMoreL2
-        .concat(minMoreL2)
-        .concat(maxL3)
-        .concat(minL3)
-        .concat(maxDoubleL2)
-        .concat(minDoubleL2)
-        .concat(maxD4)
-        .concat(minD4)
-        .concat(maxD3)
-        .concat(minD3)
-        .concat(maxL2)
-        .concat(minL2)
-        .concat(maxL14)
-        .concat(maxL13)
-        .concat(maxD2)
-        .concat(minD2)
-        .concat(maxOtherNoMatter)
-      return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
-    } else {
-      if (minL5.length) return minL5
-      if (maxL5.length) return maxL5
-      if (minL4.length) return minL4
-      if (minD4L3.length) return minD4L3
-      if (maxL4.length) return maxL4
-      if (maxD4L3.length) return maxD4L3
-      if (minDoubleL3.length) return minDoubleL3 // 双三可考虑对方是否有冲四且拦截己方双三
-      if (maxDoubleL3.length) return maxDoubleL3
-      // !! 这里的顺序和选子很重要, 影响棋力和剪枝效率, 最好和评估函数保持一致
-      const rst = minMoreL2
-        .concat(maxMoreL2)
-        .concat(minL3)
-        .concat(maxL3)
-        .concat(minDoubleL2)
-        .concat(maxDoubleL2)
-        .concat(minD4)
-        .concat(maxD4)
-        .concat(minD3)
-        .concat(maxD3)
-        .concat(minL2)
-        .concat(maxL2)
-        .concat(minL14)
-        .concat(minL13)
-        .concat(minD2)
-        .concat(maxD2)
-        .concat(minOtherNoMatter)
-      return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
-    }
-  }
-
-  // !!!!!!!!   node2, node3 可以各删除 首尾四行
-  // 完了尝试 下棋时更新4行评分, 看看两者效率差距
-  // 记录行列, 只更新下过子的地方?
-  evaluate(kill, log) {
-    const winner = this.winner
-    if (winner === MAX) return Score.win
-    else if (winner === MIN) return -Score.win
-    if (kill) return 0 // 算杀结果必须是5连, 否则算杀失败
-
-    let maxL5 = 0
-    let maxL4 = 0
-    let maxD4 = 0
-    let maxL3 = 0
-    let maxD3 = 0
-    let maxL2 = 0
-    let maxD2 = 0
-    let maxL1 = 0
-    //
-    let minL5 = 0
-    let minL4 = 0
-    let minD4 = 0
-    let minL3 = 0
-    let minD3 = 0
-    let minL2 = 0
-    let minD2 = 0
-    let minL1 = 0
-
-    const readAndCountScore = (role, piece) => {
-      // 至少是活1
-      // log && console.log(piece.toString(2))
-      if (piece < 0b100010) return
-      const pieceMode = ninePointMode[piece]
-      if (!pieceMode) return
-      // log && console.warn(pieceMode.toString(2))
-      if (role === MAX) {
-        switch (pieceMode) {
-          case l1:
-            return maxL1++
-          case d2:
-            return maxD2++
-          case l2:
-            return maxL2++
-          case l2x2:
-            return (maxL2 += 2)
-          case d3:
-            return maxD3++
-          case l3:
-            return maxL3++
-          case d4:
-            return maxD4++
-          case l4:
-            return maxL4++
-          case l5:
-            return maxL5++
-          default:
-            return console.error('error')
-        }
-      } else {
-        switch (pieceMode) {
-          case l1:
-            return minL1++
-          case d2:
-            return minD2++
-          case l2:
-            return minL2++
-          case l2x2:
-            return (minL2 += 2)
-          case d3:
-            return minD3++
-          case l3:
-            return minL3++
-          case d4:
-            return minD4++
-          case l4:
-            return minL4++
-          case l5:
-            return minL5++
-          default:
-            return console.error('error')
-        }
-      }
-    }
-
-    const check = (chess, block, line) => {
-      let piece = 0b1
-      let emptyCount = 0
-      let isBreak = false
-
-      // 评分是用的连续11子的评分, 这里一行有 15 个子, 能行么?
-      // 大概率可行? , 一行超过连续 11子只有某一方棋子和单个空格, 这个概率很低
-      // 010101010, 最多是这样连续11子, 两边不可能再加了, 因为 max 不可能下两边不下中间
-      // 0101000101 只能是类似这种, 中间先空出来, 最后在中间落子, 这个概率很低吧?
-      // 如果要非常严谨, 可以把超过11子的情况也加到 Score map 中去
-      // console.log(line.toString(2))
-      for (let i = 0; i < 15; i++) {
-        const val = line & 0b11
-        // log && console.log('val', val.toString(2))
-        line >>= 2
-        if (val === block || val === WALL) {
-          // 截断, 读分
-          readAndCountScore(chess, piece)
-          piece = 0b1
-          isBreak = true
-          continue
-        } else if (val === EMPTY) {
-          if (emptyCount === 0) {
-            emptyCount++
-            piece <<= 1
-          } else {
-            // 出现两个空位, 截断, 计分
-            piece <<= 1
-            // 下一个还是空位
-            if ((line & 0b1100) === EMPTY && i !== 14) piece <<= 1
-            readAndCountScore(chess, piece)
-            // 被空位截断的, 后续读子时要把空位算上
-            piece = 0b100
-            if ((line & 0b1100) === EMPTY && i !== 14) piece <<= 1
-            // console.error(line & (0b11 << (2 * (i - 2))), { p: piece.toString(2) })
-            emptyCount = 0
-            isBreak = true
-            continue
-          }
-        } else {
-          emptyCount = 0
-          isBreak = false
-          piece <<= 1
-          piece += 1
-          // console.warn({ p: piece.toString(2) })
-        }
-      }
-      // 读分, 这里要判断结束时是否是被截断, 防止重复计分
-      if (!isBreak) {
-        readAndCountScore(chess, piece)
-      }
-    }
-
-    // console.log(check(MAX, MIN, 0b1011000000000001111))
-    // log && console.log(check(MIN, MAX, 0b10001000100000000000))
-    // return
-    // max
-    for (let a = 0; a < this.node0.length; a++) check(MAX, MIN, this.node0[a])
-    for (let a = 0; a < this.node1.length; a++) check(MAX, MIN, this.node1[a])
-    for (let a = 0; a < this.node2.length; a++) check(MAX, MIN, this.node2[a])
-    for (let a = 0; a < this.node3.length; a++) check(MAX, MIN, this.node3[a])
-    // min
-    for (let a = 0; a < this.node0.length; a++) check(MIN, MAX, this.node0[a])
-    for (let a = 0; a < this.node1.length; a++) check(MIN, MAX, this.node1[a])
-    for (let a = 0; a < this.node2.length; a++) check(MIN, MAX, this.node2[a])
-    for (let a = 0; a < this.node3.length; a++) check(MIN, MAX, this.node3[a])
-
-    if (log) {
-      console.log({ maxL1, maxD2, maxL2, maxD3, maxL3, maxD4, maxL4, maxL5 })
-      console.log({ minL1, minD2, minL2, minD3, minL3, minD4, minL4, minL5 })
-    }
-
-    let maxScore = 0
-    let minScore = 0
-    // 搜索结束后, 下一个是谁下棋
-    const seekEndAndNextIsMax = (this.seekDepth & 0b1) === 0
-    if (seekEndAndNextIsMax) {
-      if (maxL4 || maxD4) return Score.l5
-      if (minL4) return -Score.l5
-      if (minL3 & minD4) return -Score.l5 // 不严谨, 有可能被一颗子拦截
-      if (maxL3) {
-        if (!minL4) maxScore += Score.l4
-        if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
-      }
-    } else {
-      if (minL4 || minD4) return -Score.l5
-      if (maxL4) return Score.l5
-      if (maxL3 & maxD4) return Score.l5 // 不严谨, 有可能被一颗子拦截
-      if (minL3) {
-        if (!maxL4) minScore += Score.l4
-        if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
-      }
-    }
-    if (maxL2 > 2) maxScore += Score.l2 // 额外奖励, 可调整
-    if (minL2 > 2) minScore += Score.l2 // 额外奖励, 可调整
-    maxScore =
-      Score.l5 * maxL5 +
-      Score.l4 * maxL4 +
-      Score.d4 * maxD4 +
-      Score.l3 * maxL3 +
-      Score.d3 * maxD3 +
-      Score.l2 * maxL2 +
-      Score.d2 * maxD2 +
-      Score.l1 * maxD2
-    minScore =
-      Score.l5 * minL5 +
-      Score.l4 * minL4 +
-      Score.d4 * minD4 +
-      Score.l3 * minL3 +
-      Score.d3 * minD3 +
-      Score.l2 * minL2 +
-      Score.d2 * minD2 +
-      Score.l1 * minD2
-    // 后手时, 加强防守
-    let score = maxScore - minScore * (this.firstHand === MIN ? 2 : 1)
-    return score
   }
 
   get winner() {
@@ -857,6 +469,16 @@ export class Gobang {
 
   get isDraw() {
     return this.isBoardFull && !this.winner
+  }
+
+  get node() {
+    return this.node0.map((x) => {
+      let rst = []
+      for (let a = 0; a < boardLength; a++) {
+        rst.push((x & (0b11 << (2 * a))) >> (2 * a))
+      }
+      return rst.reverse()
+    })
   }
 
   printNode() {

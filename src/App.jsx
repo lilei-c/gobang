@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { boardLength } from './bot/const'
 import { debounce, range0 } from './bot/support'
-import { Gobang } from './bot/minimax'
+import { Gobang } from './bot/gobang'
 import './App.less'
 import './bot/otherFivechess'
 import { Chessboard } from './bot/otherFivechess'

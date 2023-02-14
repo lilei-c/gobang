@@ -86,17 +86,17 @@ const is5 = (x) => /1{5}/.test(x)
 const stat = {}
 allModes.forEach((x) => (stat[x] = null))
 // 映射 棋型count -> 棋型bit
-const ninePointMode = []
+const serialPointMode = []
 // 这里从上到下的顺序很重要, 必须子多的在后, 子多的覆盖子少的
-allModes.forEach((x) => isLive1(x.slice(3)) && (stat[x] = 'l1') && (ninePointMode[+x] = l1))
-allModes.forEach((x) => isDead2(x.slice(3)) && (stat[x] = 'd2') && (ninePointMode[+x] = d2))
-allModes.forEach((x) => isLive2(x.slice(3)) && (stat[x] = 'l2') && (ninePointMode[+x] = l2))
-allModes.forEach((x) => isDead3(x.slice(3)) && (stat[x] = 'd3') && (ninePointMode[+x] = d3))
-allModes.forEach((x) => isLive2x2(x.slice(3)) && (stat[x] = 'l2x2') && (ninePointMode[+x] = l2x2))
-allModes.forEach((x) => isLive3(x.slice(3)) && (stat[x] = 'l3') && (ninePointMode[+x] = l3))
-allModes.forEach((x) => isDead4(x.slice(3)) && (stat[x] = 'd4') && (ninePointMode[+x] = d4))
-allModes.forEach((x) => isLive4(x.slice(3)) && (stat[x] = 'l4') && (ninePointMode[+x] = l4))
-allModes.forEach((x) => is5(x.slice(3)) && (stat[x] = 'l5') && (ninePointMode[+x] = l5))
+allModes.forEach((x) => isLive1(x.slice(3)) && (stat[x] = 'l1') && (serialPointMode[+x] = l1))
+allModes.forEach((x) => isDead2(x.slice(3)) && (stat[x] = 'd2') && (serialPointMode[+x] = d2))
+allModes.forEach((x) => isLive2(x.slice(3)) && (stat[x] = 'l2') && (serialPointMode[+x] = l2))
+allModes.forEach((x) => isDead3(x.slice(3)) && (stat[x] = 'd3') && (serialPointMode[+x] = d3))
+allModes.forEach((x) => isLive2x2(x.slice(3)) && (stat[x] = 'l2x2') && (serialPointMode[+x] = l2x2))
+allModes.forEach((x) => isLive3(x.slice(3)) && (stat[x] = 'l3') && (serialPointMode[+x] = l3))
+allModes.forEach((x) => isDead4(x.slice(3)) && (stat[x] = 'd4') && (serialPointMode[+x] = d4))
+allModes.forEach((x) => isLive4(x.slice(3)) && (stat[x] = 'l4') && (serialPointMode[+x] = l4))
+allModes.forEach((x) => is5(x.slice(3)) && (stat[x] = 'l5') && (serialPointMode[+x] = l5))
 
 console.log(
   '未构成棋型的组合, 这一部分已经验证',
@@ -114,6 +114,6 @@ Object.keys(Score).forEach((m) => {
   )
 })
 
-console.log({ allModes, ninePointMode })
+console.log({ allModes, serialPointMode })
 
-export { ninePointMode, Score, countLine, getPointMode, chessModeBit }
+export { serialPointMode, Score, countLine, getPointMode, chessModeBit }
