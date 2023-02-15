@@ -112,11 +112,10 @@ export function genChilds(points, isMax, kill) {
       if (minL5.length) return []
       if (maxL4.length) return maxL4
       if (maxD4L3.length || maxD4.length) return maxD4L3.concat(maxD4)
-      if (minL4.length) return [] // minL4
-      if (minD4L3.length) return [] //minD4L3
-      // 双三可以考虑一下
-      if (maxDoubleL3.length && !minD4.length && !minD4L3.length) return maxDoubleL3
-      // 考虑活三性能会很差
+      if (minL4.length || minD4.length) return []
+      // 双三可以考虑一下, 考虑活三性能会很差
+      // 如果考虑三, 搜索时, min 方的启发函数不应剪切棋子, 否则算杀有概率失误
+      if (maxDoubleL3.length) return maxDoubleL3
       if (maxL3.length) return maxL3
       return []
     }
@@ -124,13 +123,14 @@ export function genChilds(points, isMax, kill) {
     if (maxL5.length) return maxL5
     if (minL5.length) return minL5
     if (maxL4.length) return maxL4
-    if (maxD4L3.length) return maxD4L3
     if (minL4.length) return minL4
-    if (minD4L3.length) return minD4L3
-    if (maxDoubleL3.length) return maxDoubleL3 // 双三可考虑对方是否有冲四且拦截己方双三
-    if (minDoubleL3.length) return minDoubleL3
+
     // !! 这里的顺序和选子很重要, 影响棋力和剪枝效率, 最好和评估函数保持一致
-    const rst = maxMoreL2
+    const rst = maxD4L3
+      .concat(minD4L3)
+      .concat(maxDoubleL3)
+      .concat(minDoubleL3)
+      .concat(maxMoreL2)
       .concat(minMoreL2)
       .concat(maxL3)
       .concat(minL3)
@@ -152,13 +152,13 @@ export function genChilds(points, isMax, kill) {
     if (minL5.length) return minL5
     if (maxL5.length) return maxL5
     if (minL4.length) return minL4
-    if (minD4L3.length) return minD4L3
     if (maxL4.length) return maxL4
-    if (maxD4L3.length) return maxD4L3
-    if (minDoubleL3.length) return minDoubleL3 // 双三可考虑对方是否有冲四且拦截己方双三
-    if (maxDoubleL3.length) return maxDoubleL3
     // !! 这里的顺序和选子很重要, 影响棋力和剪枝效率, 最好和评估函数保持一致
-    const rst = minMoreL2
+    const rst = minD4L3
+      .concat(maxD4L3)
+      .concat(minDoubleL3)
+      .concat(maxDoubleL3)
+      .concat(minMoreL2)
       .concat(maxMoreL2)
       .concat(minL3)
       .concat(maxL3)
@@ -175,6 +175,7 @@ export function genChilds(points, isMax, kill) {
       .concat(minD2)
       .concat(maxD2)
       .concat(minOtherNoMatter)
+    rst.sort((a, b) => a[0] - b[0])
     return rst.length <= this.genLimit ? rst : rst.slice(0, this.genLimit)
   }
 }

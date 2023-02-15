@@ -8,10 +8,13 @@ import { Chessboard } from './bot/otherFivechess'
 import { useReducer } from 'react'
 import Num from './comps/num'
 import ABC from './comps/abc'
+import { useEffect } from 'react'
+import Worker from './bot/worker.js?worker'
 
 var chessboard = new Chessboard(boardLength, boardLength)
 
-let gobang = new Gobang({ boardLength })
+let gobang = new Gobang({})
+gobang.init({})
 
 const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPoint }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
@@ -76,55 +79,77 @@ const Board = ({ squares, onClick, winner }) => {
   )
 }
 
+var worker = new Worker()
+
 const Game = () => {
   const [start, startX] = useState(false)
   const [_, forceUpdate] = useReducer((x) => x + 1, 0)
-  const { winner, isFinal, isDraw } = gobang
+  const { winner, isFinal } = gobang
+  const [time, timeX] = useState(0)
 
   const onClickBoard = (i, j) => {
     if (!start) return console.log({ start })
     if (isFinal) return console.log({ isFinal })
 
-    let minGo
-    if (window.test) {
+    if (window.t) {
       console.time('b1')
       var res = Chessboard.prototype.min(chessboard, 2)
       console.timeEnd('b1')
       chessboard.put(res.row, res.column, Chessboard.MIN)
-      minGo = gobang.minGo(res.row, res.column)
+      worker.postMessage({ type: 'minGo', data: [res.row, res.column] })
     } else {
-      minGo = gobang.minGo(i, j)
-    }
-    if (minGo) {
-      forceUpdate()
-      setTimeout(maxGo, 0)
+      worker.postMessage({ type: 'minGo', data: [i, j] })
     }
   }
 
   const maxGo = () => {
-    const score = gobang.maxGo()
-    forceUpdate()
-    const { i, j } = score
-    chessboard.put(i, j, Chessboard.MAX)
+    worker.postMessage({ type: 'maxGo' })
   }
 
   const onReStart = () => {
     startX(false)
   }
 
-  const onStart = (role) => {
+  const onStart = (firstHand) => {
     startX(true)
-    gobang = new Gobang({ firstHand: role })
-    window.gobang = gobang
     chessboard = new Chessboard(boardLength, boardLength)
-    if (gobang.firstHand === Gobang.MAX) maxGo()
-    forceUpdate()
+    worker.postMessage({ type: 'init', data: { firstHand } })
   }
 
-  winner && console.log(`${winner === Gobang.MAX ? 'bot' : 'human'} 胜出`)
+  useEffect(() => {
+    const id = setInterval(() => {
+      timeX((x) => x + 0.2)
+    }, 200)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    worker.onmessage = (e) => {
+      const [type, gob, res] = e.data
+      gobang = JSON.parse(gob)
+      switch (type) {
+        case 'minGo':
+          // maxGo()
+          setTimeout(maxGo, 0)
+          break
+        case 'maxGo':
+          const { i, j } = res
+          chessboard.put(i, j, Chessboard.MAX)
+          break
+        default:
+          break
+      }
+      forceUpdate()
+      console.log('Message received from worker', type, JSON.parse(gob), res)
+    }
+  }, [])
 
   return (
     <div className="game">
+      <div className="gameInfo">
+        <div className="">{time.toFixed(1)}</div>
+        <div className=""></div>
+      </div>
       <div className="gameBoard">
         <Num />
         <div className="center">

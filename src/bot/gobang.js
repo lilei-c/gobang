@@ -6,7 +6,7 @@ import { evaluate } from './evaluate'
 import { genChilds } from './genChilds'
 
 export class Gobang {
-  constructor({ firstHand }) {
+  init({ firstHand }) {
     this.totalChessPieces = boardLength * boardLength
     this.initNode()
     this.stack = []
@@ -18,8 +18,8 @@ export class Gobang {
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
-    this.seekDepth = 2
-    this.seekKillDepth = 19 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.seekDepth = 4
+    this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
   static MIN = MIN
@@ -123,7 +123,6 @@ export class Gobang {
       score = this.minimax(this.seekKillDepth, true)
       console.timeEnd('thinking kill')
     }
-    // 前几个落子剪枝效率不高, 搜索层数少点
     if (score?.score >= Score.win) {
       console.warn('算杀成功 :)')
     } else {
