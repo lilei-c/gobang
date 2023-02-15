@@ -4,7 +4,9 @@ export const arrayN = (n, val = null) => Array(n).fill(val)
 
 export const debounce = (fn, gap = 20) => {
   let now = +new Date()
+  // console.warn({ now })
   return (...args) => {
+    // console.warn(+new Date() - now)
     if (+new Date() - now > gap) fn(...args)
     now = +new Date()
   }

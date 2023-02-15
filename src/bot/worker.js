@@ -1,7 +1,20 @@
-import { MAX } from './const'
 import { Gobang } from './gobang'
-
+import { Chessboard } from './otherFivechess'
 const gobang = new Gobang()
+console.log({ gobang })
+
+// 和其它AI对弈, 方便测试
+let autoPlay = false
+let otherBot = new Chessboard(15, 15)
+function aiGo({ i, j }) {
+  otherBot.put(i, j, Chessboard.MIN)
+  console.time('b1')
+  const otherStep = Chessboard.prototype.min(otherBot, 2)
+  console.timeEnd('b1')
+  otherBot.put(otherStep.row, otherStep.column, Chessboard.MAX)
+  gobang.minGo(otherStep.row, otherStep.column)
+  return true
+}
 
 onmessage = function (e) {
   console.log(e.data)
@@ -10,13 +23,21 @@ onmessage = function (e) {
   switch (type) {
     case 'init':
       gobang.init(data)
-      if (data.firstHand === MAX) gobang.maxGo()
+      autoPlay = data.autoPlay
+      if (autoPlay) otherBot = new Chessboard(15, 15)
       break
     case 'maxGo':
       res = gobang.maxGo()
       break
     case 'minGo':
       res = gobang.minGo(...data)
+      break
+    case 'minRepent':
+      res = gobang.minRepent()
+      break
+    case 'autoPlay':
+      if (!autoPlay) return
+      res = aiGo(data)
       break
     default:
       break

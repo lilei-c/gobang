@@ -6,7 +6,7 @@ import { evaluate } from './evaluate'
 import { genChilds } from './genChilds'
 
 export class Gobang {
-  init({ firstHand }) {
+  init({ firstHand, seekDepth }) {
     this.totalChessPieces = boardLength * boardLength
     this.initNode()
     this.stack = []
@@ -18,7 +18,7 @@ export class Gobang {
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
-    this.seekDepth = 4
+    this.seekDepth = seekDepth || 4
     this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
   }
   static MAX = MAX
@@ -139,6 +139,7 @@ export class Gobang {
   }
 
   minGo(i, j) {
+    console.log({ i, j }, this.isFinal, this.isEmptyPosition(i, j))
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
     this.put(i, j, MIN)

@@ -3,18 +3,16 @@ import { boardLength } from './bot/const'
 import { debounce, range0 } from './bot/support'
 import { Gobang } from './bot/gobang'
 import './App.less'
-import './bot/otherFivechess'
-import { Chessboard } from './bot/otherFivechess'
 import { useReducer } from 'react'
 import Num from './comps/num'
 import ABC from './comps/abc'
+import Time from './comps/time'
 import { useEffect } from 'react'
 import Worker from './bot/worker.js?worker'
 
-var chessboard = new Chessboard(boardLength, boardLength)
-
 let gobang = new Gobang({})
 gobang.init({})
+let worker = new Worker()
 
 const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPoint }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
@@ -32,8 +30,9 @@ const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPo
   )
 }
 
-const Board = ({ squares, onClick, winner }) => {
+const Board = ({ squares, onClick }) => {
   const lastChess = gobang.lastChessPosition
+  const winner = gobang.winnerPositions
   const winnerPositions = winner ? gobang.winnerPositions : null
 
   return (
@@ -79,30 +78,24 @@ const Board = ({ squares, onClick, winner }) => {
   )
 }
 
-var worker = new Worker()
-
 const Game = () => {
   const [start, startX] = useState(false)
   const [_, forceUpdate] = useReducer((x) => x + 1, 0)
-  const { winner, isFinal } = gobang
-  const [time, timeX] = useState(0)
+  const [thinking, thinkingX] = useState(false)
+  const [autoPlay, autoPlayX] = useState(false)
+
+  const isFinal = gobang.isFinal
 
   const onClickBoard = (i, j) => {
+    console.log({ start, isFinal, thinking })
     if (!start) return console.log({ start })
     if (isFinal) return console.log({ isFinal })
-
-    if (window.t) {
-      console.time('b1')
-      var res = Chessboard.prototype.min(chessboard, 2)
-      console.timeEnd('b1')
-      chessboard.put(res.row, res.column, Chessboard.MIN)
-      worker.postMessage({ type: 'minGo', data: [res.row, res.column] })
-    } else {
-      worker.postMessage({ type: 'minGo', data: [i, j] })
-    }
+    if (thinking) return console.log({ thinking })
+    worker.postMessage({ type: 'minGo', data: [i, j] })
   }
 
   const maxGo = () => {
+    thinkingX(true)
     worker.postMessage({ type: 'maxGo' })
   }
 
@@ -110,64 +103,67 @@ const Game = () => {
     startX(false)
   }
 
-  const onStart = (firstHand) => {
+  const onStart = (firstHand, autoPlay) => {
     startX(true)
-    chessboard = new Chessboard(boardLength, boardLength)
-    worker.postMessage({ type: 'init', data: { firstHand } })
+    autoPlayX(autoPlay)
+    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDeapth: autoPlay ? 2 : undefined } })
+  }
+
+  const minRepent = () => {
+    worker.postMessage({ type: 'minRepent' })
   }
 
   useEffect(() => {
-    const id = setInterval(() => {
-      timeX((x) => x + 0.2)
-    }, 200)
-    return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
     worker.onmessage = (e) => {
-      const [type, gob, res] = e.data
+      const [type, gob, data] = e.data
       gobang = JSON.parse(gob)
+      forceUpdate()
       switch (type) {
+        case 'init':
+          if (gobang.firstHand === Gobang.MAX) maxGo()
+          break
         case 'minGo':
-          // maxGo()
-          setTimeout(maxGo, 0)
+        case 'autoPlay':
+          data && maxGo()
           break
         case 'maxGo':
-          const { i, j } = res
-          chessboard.put(i, j, Chessboard.MAX)
+          thinkingX(false)
+          setTimeout(() => {
+            worker.postMessage({ type: 'autoPlay', data })
+          }, 1000)
           break
         default:
           break
       }
-      forceUpdate()
-      console.log('Message received from worker', type, JSON.parse(gob), res)
+      console.log('message from worker', type, JSON.parse(gob), data)
     }
   }, [])
 
+  console.log('update game')
   return (
     <div className="game">
       <div className="gameInfo">
-        <div className="">{time.toFixed(1)}</div>
+        <Time />
         <div className=""></div>
       </div>
       <div className="gameBoard">
         <Num />
         <div className="center">
           <ABC />
-          <Board squares={gobang.node} onClick={debounce(onClickBoard, 50)} winner={winner} />
+          <Board squares={gobang.node} onClick={debounce(onClickBoard, 20)} />
           <ABC />
         </div>
         <Num />
       </div>
       <div className="opbtns">
         {start && <button onClick={onReStart}>重来</button>}
-        {!start && <button onClick={() => onStart(Gobang.MAX)}>开始 - 电脑先</button>}
-        {!start && <button onClick={() => onStart(Gobang.MIN)}>开始 - 玩家先</button>}
+        {!start && <button onClick={() => onStart(Gobang.MAX)}>电脑先手</button>}
+        {!start && <button onClick={() => onStart(Gobang.MIN)}>玩家先手</button>}
+        {!start && <button onClick={() => onStart(Gobang.MAX, true)}>电脑vs电脑</button>}
         {start && (
           <button
             onClick={() => {
-              gobang.minRepent()
-              forceUpdate()
+              minRepent()
             }}
           >
             {'悔棋'}
@@ -175,8 +171,7 @@ const Game = () => {
         )}
       </div>
       <div className="game-info">
-        <div>{isFinal && 'game over'}</div>
-        {winner && <div>{winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}</div>}
+        {gobang.winner && <div>{gobang.winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}</div>}
         <ol>{/* TODO */}</ol>
       </div>
     </div>
