@@ -6,6 +6,9 @@ import { evaluate } from './evaluate'
 import { genChilds } from './genChilds'
 
 export class Gobang {
+  constructor(props) {
+    this.init({ ...props })
+  }
   init({ firstHand, seekDepth }) {
     this.totalChessPieces = boardLength * boardLength
     this.initNode()
@@ -130,20 +133,19 @@ export class Gobang {
       score = this.minimax(this.seekDepth)
       console.timeEnd('thinking')
     }
-    console.log({ score })
+    // console.log({ score })
     const { i, j } = score
     this.put(i, j, MAX)
     this.logStats()
-    console.log('score', evaluate.call(this, false, true))
+    // console.log('score', evaluate.call(this, false, true))
     return score
   }
 
   minGo(i, j) {
-    console.log({ i, j }, this.isFinal, this.isEmptyPosition(i, j))
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
     this.put(i, j, MIN)
-    console.log('score', evaluate.call(this))
+    // console.log('score', evaluate.call(this))
     return true
   }
 
@@ -412,6 +414,10 @@ export class Gobang {
     const score = serialPointMode[count]
     rst += score || 0
     return rst
+  }
+
+  test(data) {
+    eval(data)
   }
 
   get winner() {

@@ -10,9 +10,11 @@ import Time from './comps/time'
 import { useEffect } from 'react'
 import Worker from './bot/worker.js?worker'
 
-let gobang = new Gobang({})
-gobang.init({})
+let gobang = new Gobang()
 let worker = new Worker()
+// 方便调试
+// test('console.log(this.node)')
+window.test = (x) => worker.postMessage({ type: 'test', data: x })
 
 const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPoint }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])
@@ -91,6 +93,7 @@ const Game = () => {
     if (!start) return console.log({ start })
     if (isFinal) return console.log({ isFinal })
     if (thinking) return console.log({ thinking })
+    if (autoPlay) return console.log({ autoPlay })
     worker.postMessage({ type: 'minGo', data: [i, j] })
   }
 
@@ -106,7 +109,7 @@ const Game = () => {
   const onStart = (firstHand, autoPlay) => {
     startX(true)
     autoPlayX(autoPlay)
-    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDeapth: autoPlay ? 2 : undefined } })
+    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDepth: autoPlay ? 2 : undefined } })
   }
 
   const minRepent = () => {
@@ -117,6 +120,7 @@ const Game = () => {
     worker.onmessage = (e) => {
       const [type, gob, data] = e.data
       gobang = JSON.parse(gob)
+      // console.log('message from worker', type, JSON.parse(gob), data)
       forceUpdate()
       switch (type) {
         case 'init':
@@ -135,11 +139,10 @@ const Game = () => {
         default:
           break
       }
-      console.log('message from worker', type, JSON.parse(gob), data)
     }
   }, [])
 
-  console.log('update game')
+  // console.log('update game')
   return (
     <div className="game">
       <div className="gameInfo">
