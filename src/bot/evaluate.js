@@ -199,6 +199,6 @@ export function evaluate(kill, log) {
     Score.d2 * minD2 +
     Score.l1 * minD2
   // 后手时, 加强防守
-  let score = maxScore - minScore * (this.firstHand === MIN ? 2 : 1)
+  let score = maxScore * this.attackFactor - minScore * this.defenseFactor
   return score
 }

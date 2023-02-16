@@ -34,7 +34,7 @@ const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPo
 
 const Board = ({ squares, onClick }) => {
   const lastChess = gobang.lastChessPosition
-  const winner = gobang.winnerPositions
+  const winner = gobang.winner
   const winnerPositions = winner ? gobang.winnerPositions : null
 
   return (
@@ -118,23 +118,19 @@ const Game = () => {
 
   useEffect(() => {
     worker.onmessage = (e) => {
-      const [type, gob, data] = e.data
-      gobang = JSON.parse(gob)
-      // console.log('message from worker', type, JSON.parse(gob), data)
+      const { type, gobang: gobangClone, data } = e.data
+      gobang = JSON.parse(gobangClone)
+      console.log('message from worker', type, gobang, data)
       forceUpdate()
       switch (type) {
         case 'init':
-          if (gobang.firstHand === Gobang.MAX) maxGo()
+          if (gobang.firstHand === Gobang.MAX && !gobang.autoPlay) maxGo()
           break
         case 'minGo':
-        case 'autoPlay':
           data && maxGo()
           break
         case 'maxGo':
           thinkingX(false)
-          setTimeout(() => {
-            worker.postMessage({ type: 'autoPlay', data })
-          }, 1000)
           break
         default:
           break

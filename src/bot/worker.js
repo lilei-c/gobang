@@ -1,29 +1,21 @@
 import { Gobang } from './gobang'
 import { Chessboard } from './otherFivechess'
+import { wait } from './support'
 const gobang = new Gobang()
 
-// 和其它AI对弈, 方便测试
-let autoPlay = false
-let otherBot = new Chessboard(15, 15)
-function aiGo({ i, j }) {
-  otherBot.put(i, j, Chessboard.MIN)
-  console.time('b1')
-  const otherStep = Chessboard.prototype.max(otherBot, 2)
-  console.timeEnd('b1')
-  otherBot.put(otherStep.row, otherStep.column, Chessboard.MAX)
-  gobang.minGo(otherStep.row, otherStep.column)
-  return true
-}
-
-onmessage = function (e) {
+// 同步操作统一在函数末尾发送消息
+// 异步操作在 switch 分支发送消息并 return
+onmessage = async function (e) {
   // console.log(e.data)
   const { type, data } = e.data
   let res
   switch (type) {
     case 'init':
       gobang.init(data)
-      autoPlay = data.autoPlay
-      if (autoPlay) otherBot = new Chessboard(15, 15)
+      if (gobang.autoPlay) {
+        // autoPlayWithOtherAI()
+        autoPlayWithSelf()
+      }
       break
     case 'maxGo':
       res = gobang.maxGo()
@@ -34,19 +26,20 @@ onmessage = function (e) {
     case 'minRepent':
       res = gobang.minRepent()
       break
-    case 'autoPlay':
-      if (!autoPlay) return
-      res = aiGo(data)
-      break
     case 'test':
       res = gobang.test(data)
       break
     default:
       break
   }
-  postMessage([
+  senMessage(type, res)
+}
+
+const senMessage = (type, data) =>
+  postMessage({
     type,
-    JSON.stringify({
+    data,
+    gobang: JSON.stringify({
       ...gobang,
       node: gobang.node,
       stack: gobang.stack,
@@ -57,6 +50,39 @@ onmessage = function (e) {
       winner: gobang.winner,
       isFinal: gobang.isFinal,
     }),
-    res,
-  ])
+  })
+
+// 和其它AI对弈, 方便测试
+const autoPlayWithOtherAI = async () => {
+  const otherBot = new Chessboard(15, 15)
+  while (gobang.autoPlay) {
+    const { i, j } = gobang.maxGo()
+    otherBot.put(i, j, Chessboard.MIN)
+    senMessage('autoPlay')
+    await wait(1000)
+
+    console.time('other AI')
+    const { row, column } = Chessboard.prototype.max(otherBot, 2)
+    console.timeEnd('other AI')
+    otherBot.put(row, column, Chessboard.MAX)
+    gobang.minGo(row, column)
+    senMessage('autoPlay')
+    await wait(1000)
+  }
+}
+
+const autoPlayWithSelf = async () => {
+  const otherGobang = new Gobang({ firstHand: Gobang.MIN, seekDepth: 2, defenseFactor: 4 })
+  otherGobang.sss
+  while (gobang.autoPlay) {
+    const { i, j } = gobang.maxGo()
+    otherGobang.minGo(i, j)
+    senMessage('autoPlay')
+    await wait(1000)
+
+    const { i: ii, j: jj } = otherGobang.maxGo()
+    gobang.minGo(ii, jj)
+    senMessage('autoPlay')
+    await wait(1000)
+  }
 }

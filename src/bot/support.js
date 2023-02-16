@@ -17,3 +17,5 @@ export const range = (start) => (end) =>
     .fill(null)
     .map((_, i) => start + i)
 export const range0 = range(0)
+
+export const wait = (n) => new Promise((res) => setTimeout(res, n))

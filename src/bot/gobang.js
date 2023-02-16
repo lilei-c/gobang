@@ -9,7 +9,7 @@ export class Gobang {
   constructor(props) {
     this.init({ ...props })
   }
-  init({ firstHand, seekDepth }) {
+  init({ firstHand, seekDepth, autoPlay, enableStats, attackFactor, defenseFactor }) {
     this.totalChessPieces = boardLength * boardLength
     this.initNode()
     this.stack = []
@@ -17,12 +17,15 @@ export class Gobang {
     this.maxPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, [0, 0, 0, 0]))
     this.minPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, [0, 0, 0, 0]))
     this.stats = {} // 统计性能优化数据
-    this.enableStats = true // 记录 stats
+    this.enableStats = enableStats !== undefined ? enableStats : true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 60 // 启发式搜索, 选取节点数
     this.seekDepth = seekDepth || 4
     this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.autoPlay = autoPlay
+    this.attackFactor = attackFactor || 1
+    this.defenseFactor = defenseFactor || 2
   }
   static MAX = MAX
   static MIN = MIN
@@ -520,8 +523,9 @@ export class Gobang {
     }
   }
   logStats() {
-    Object.keys(this.stats).forEach((m) => {
-      console.log(this.stats[m].toString.call(this))
-    })
+    this.enableStats &&
+      Object.keys(this.stats).forEach((m) => {
+        console.log(this.stats[m].toString.call(this))
+      })
   }
 }
