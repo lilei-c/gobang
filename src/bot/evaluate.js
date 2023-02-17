@@ -164,22 +164,22 @@ export function evaluate(kill, log) {
   if (seekEndAndNextIsMax) {
     if (maxL4 || maxD4) return Score.l5
     if (minL4) return -Score.l5
-    if (minL3 & minD4) return -Score.l5 // 不严谨, 有可能被一颗子拦截
+    if (minD4 > 2 || minL3 > 2 || minL3 & minD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
     if (maxL3) {
-      if (!minL4) maxScore += Score.l4
-      if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
+      if (!minL4 && !minD4) maxScore += Score.l4
+      // if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
     }
   } else {
     if (minL4 || minD4) return -Score.l5
     if (maxL4) return Score.l5
-    if (maxL3 & maxD4) return Score.l5 // 不严谨, 有可能被一颗子拦截
+    if (maxD4 > 2 || maxL3 > 2 || maxL3 & maxD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
     if (minL3) {
-      if (!maxL4) minScore += Score.l4
-      if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
+      if (!maxL4 && !maxD4) minScore += Score.l4
+      // if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
     }
   }
-  if (maxL2 > 2) maxScore += Score.l2 // 额外奖励, 可调整
-  if (minL2 > 2) minScore += Score.l2 // 额外奖励, 可调整
+  // if (maxL2 > 2) maxScore += Score.l2 // 额外奖励, 可调整
+  // if (minL2 > 2) minScore += Score.l2 // 额外奖励, 可调整
   maxScore =
     Score.l5 * maxL5 +
     Score.l4 * maxL4 +

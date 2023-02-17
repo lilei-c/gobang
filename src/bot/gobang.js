@@ -20,12 +20,12 @@ export class Gobang {
     this.enableStats = enableStats !== undefined ? enableStats : true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 200 // 启发式搜索, 选取节点数
-    this.seekDepth = seekDepth || 2
+    this.genLimit = 20 // 启发式搜索, 选取节点数
+    this.seekDepth = seekDepth || 6
     this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
     this.autoPlay = autoPlay
     this.attackFactor = attackFactor || 1
-    this.defenseFactor = defenseFactor || 1
+    this.defenseFactor = defenseFactor || 2
   }
   static MAX = MAX
   static MIN = MIN
@@ -138,7 +138,7 @@ export class Gobang {
       score = this.minimax(this.seekDepth)
       console.timeEnd('thinking')
     }
-    // console.log({ score })
+    console.log({ score })
     const { i, j } = score
     this.put(i, j, MAX)
     this.logStats()
@@ -421,9 +421,21 @@ export class Gobang {
     return rst
   }
 
+  saveStack() {
+    console.log(JSON.stringify(this.stack))
+  }
+
+  restoreStack(stack) {
+    let first = this.firstHand
+    let second = first === MAX ? MIN : MAX
+    for (var a = 0; a < stack.length; a++) {
+      const [i, j] = stack[a]
+      this.put(i, j, (a & 1) === 0 ? first : second)
+    }
+  }
+
   test(data) {
     console.log(eval(data))
-    return eval(data)
   }
 
   get winner() {

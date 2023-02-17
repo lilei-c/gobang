@@ -69,22 +69,22 @@ const autoPlayWithOtherAI = async () => {
     gobang.minGo(row, column)
     senMessage('autoPlay')
   }
-  gobang.genLimit = 20
-  gobang.seekDepth = 6
+  gobang.genLimit = 40
+  gobang.seekDepth = 4
   while (gobang.autoPlay) {
-    await otherGo()
-    await wait(10)
     await gobangGo()
-    await wait(10)
+    await wait(500)
+    await otherGo()
+    await wait(500)
   }
 }
 
 const autoPlayWithSelf = async () => {
   const otherGobang = new Gobang({ firstHand: Gobang.MIN, seekDepth: 2, defenseFactor: 4 })
-  gobang.genLimit = 400
+  gobang.genLimit = 40
   gobang.seekDepth = 4
-  otherGobang.genLimit = 20
-  otherGobang.seekDepth = 6
+  otherGobang.genLimit = 40
+  otherGobang.seekDepth = 4
   const gobangGo = async () => {
     const { i, j } = gobang.maxGo()
     otherGobang.minGo(i, j)
@@ -97,8 +97,8 @@ const autoPlayWithSelf = async () => {
   }
   while (gobang.autoPlay) {
     await gobangGo()
-    await wait(10)
+    await wait(500)
     await otherGo()
-    await wait(10)
+    await wait(500)
   }
 }
