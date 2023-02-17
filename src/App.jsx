@@ -120,7 +120,7 @@ const Game = () => {
     worker.onmessage = (e) => {
       const { type, gobang: gobangClone, data } = e.data
       gobang = JSON.parse(gobangClone)
-      console.log('message from worker', type, gobang, data)
+      // console.log('message from worker', type, gobang, data)
       forceUpdate()
       switch (type) {
         case 'init':

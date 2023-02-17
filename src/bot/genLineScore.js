@@ -1,18 +1,19 @@
 // 用 bits 记录棋型
 // 0b00 00 00 00 000 000 000 000
 //   l5 l4 d4 l3  d3  l2  d2  l1
-const l1 = 2 ** 0 // 1
-const d2 = 2 ** 3 // 1000
-const l2 = 2 ** 6 // 1000000
-const l2x2 = l2 * 2
-const d3 = 2 ** 9 // 1000000000
-const l3 = 2 ** 12 // 1000000000000
-const d4 = 2 ** 14 // 100000000000000
-const l4 = 2 ** 16 // 10000000000000000
-const l5 = 2 ** 18 // 1000000000000000000
-const chessModeBit = { l1, d2, l2, d3, l3, d4, l4, l5, l2x2 }
+export const chessModeBit = {
+  l1: 2 ** 0, // 1
+  d2: 2 ** 3, // 1000
+  l2: 2 ** 6, // 1000000
+  l2x2: 2 ** 7,
+  d3: 2 ** 9, // 1000000000
+  l3: 2 ** 12, // 1000000000000
+  d4: 2 ** 14, // 100000000000000
+  l4: 2 ** 16, // 10000000000000000
+  l5: 2 ** 18, // 1000000000000000000
+}
 
-const getPointMode = (x) => {
+export const getPointMode = (x) => {
   return {
     l1: x & 0b111,
     d2: (x & 0b111000) >> 3,
@@ -25,7 +26,7 @@ const getPointMode = (x) => {
   }
 }
 
-const Score = {
+export const Score = {
   /**/ l1: 10,
   /**/ d2: 10,
   /**/ d3: 200,
@@ -38,9 +39,23 @@ const Score = {
   /**/ win: 100000,
 }
 
+export const calcEvaPointScore = (pointMode) => {
+  const { l5, l4, d4, l3, d3, l2, d2, l1 } = pointMode
+  let rst = 0
+  if (l5) rst += Score.l5 * l5
+  if (l4) rst += Score.l4 * l4
+  if (d4) rst += Score.d4 * d4
+  if (l3) rst += Score.l3 * l3
+  if (d3) rst += Score.d3 * d3
+  if (l2) rst += Score.l2 * l2
+  if (d2) rst += Score.d2 * d2
+  if (l1) rst += Score.l1 * l1
+  return rst
+}
+
 console.warn('todo: 测试 countLine 是否正确')
 //
-const countLine = (chess, block, wall) => (s) => {
+export const countLine = (chess, block, wall) => (s) => {
   let r = 0b1
   for (let i = 0; i < s.length; i++) {
     const val = s[i]
@@ -87,6 +102,7 @@ const stat = {}
 allModes.forEach((x) => (stat[x] = null))
 // 映射 棋型count -> 棋型bit
 const serialPointMode = []
+const { l5, l4, d4, l3, d3, l2, l2x2, d2, l1 } = chessModeBit
 // 这里从上到下的顺序很重要, 必须子多的在后, 子多的覆盖子少的
 allModes.forEach((x) => isLive1(x.slice(3)) && (stat[x] = 'l1') && (serialPointMode[+x] = l1))
 allModes.forEach((x) => isDead2(x.slice(3)) && (stat[x] = 'd2') && (serialPointMode[+x] = d2))
@@ -116,4 +132,4 @@ Object.keys(Score).forEach((m) => {
 
 console.log({ allModes, serialPointMode })
 
-export { serialPointMode, Score, countLine, getPointMode, chessModeBit }
+export { serialPointMode }

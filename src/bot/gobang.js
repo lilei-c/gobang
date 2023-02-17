@@ -20,17 +20,19 @@ export class Gobang {
     this.enableStats = enableStats !== undefined ? enableStats : true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 60 // 启发式搜索, 选取节点数
-    this.seekDepth = seekDepth || 4
+    this.genLimit = 200 // 启发式搜索, 选取节点数
+    this.seekDepth = seekDepth || 2
     this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
     this.autoPlay = autoPlay
     this.attackFactor = attackFactor || 1
-    this.defenseFactor = defenseFactor || 2
+    this.defenseFactor = defenseFactor || 1
   }
   static MAX = MAX
   static MIN = MIN
   static EMPTY = EMPTY
   static WALL = WALL
+
+  genChilds = genChilds
 
   isWall(i, j) {
     return i < 0 || i >= boardLength || j < 0 || j >= boardLength
@@ -213,7 +215,7 @@ export class Gobang {
       const score = evaluate.call(this, kill)
       return { score, depth }
     }
-    const orderedPoints = genChilds.call(this, this.getAllOptimalNextStep(), isMax, kill)
+    const orderedPoints = this.genChilds(this.getAllOptimalNextStep(), isMax, kill)
     if (!orderedPoints?.length) return { score: 0 }
     if (isMax) {
       let val = -Infinity
@@ -420,7 +422,8 @@ export class Gobang {
   }
 
   test(data) {
-    eval(data)
+    console.log(eval(data))
+    return eval(data)
   }
 
   get winner() {
