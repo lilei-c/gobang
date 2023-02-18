@@ -113,12 +113,18 @@ const Game = () => {
     worker = new Worker()
     worker.postMessage({ type: 'init', data: {} })
     startX(false)
+    autoPlayX(false)
   }
 
   const onStart = (firstHand, autoPlay) => {
     startX(true)
     autoPlayX(autoPlay)
-    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDepth: autoPlay ? 2 : 4 } })
+    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDepth: 4 } })
+  }
+
+  const onAutoPlay = () => {
+    autoPlayX(true)
+    worker.postMessage({ type: 'init', data: { firstHand: Gobang.MAX, autoPlay: true, seekDepth: 2 } })
   }
 
   const minRepent = () => {
@@ -151,6 +157,7 @@ const Game = () => {
           dispatchMusic({ type: 'add', value: 'fall' })
           break
         default:
+          forceUpdate()
           break
       }
     }
@@ -178,18 +185,19 @@ const Game = () => {
         <Num />
       </div>
       <div className="opbtns">
-        {start && <button onClick={onReStart}>重来</button>}
-        {!start && <button onClick={() => onStart(Gobang.MAX)}>电脑先手</button>}
-        {!start && <button onClick={() => onStart(Gobang.MIN)}>玩家先手</button>}
-        {!start && <button onClick={() => onStart(Gobang.MAX, true)}>电脑vs电脑</button>}
+        {autoPlay && <button onClick={onReStart}>开始游戏</button>}
+        {!autoPlay && !start && (
+          <>
+            <button onClick={() => onStart(Gobang.MAX)}>电脑先手</button>
+            <button onClick={() => onStart(Gobang.MIN)}>玩家先手</button>
+            <button onClick={onAutoPlay}>电脑vs电脑</button>
+          </>
+        )}
         {start && (
-          <button
-            onClick={() => {
-              minRepent()
-            }}
-          >
-            {'悔棋'}
-          </button>
+          <>
+            <button onClick={onReStart}>重来</button>
+            <button onClick={minRepent}>悔棋</button>
+          </>
         )}
       </div>
       <div className="game-info">
