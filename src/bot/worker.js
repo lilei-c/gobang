@@ -1,7 +1,7 @@
 import { Gobang } from './gobang'
 import { Chessboard } from './otherFivechess'
 import { wait } from './support'
-const gobang = new Gobang()
+let gobang = new Gobang()
 
 // 同步操作统一在函数末尾发送消息
 // 异步操作在 switch 分支发送消息并 return
@@ -13,8 +13,8 @@ onmessage = async function (e) {
     case 'init':
       gobang.init(data)
       if (gobang.autoPlay) {
-        // autoPlayWithOtherAI()
-        autoPlayWithSelf()
+        autoPlayWithOtherAI()
+        // autoPlayWithSelf()
       }
       break
     case 'maxGo':
@@ -26,9 +26,11 @@ onmessage = async function (e) {
     case 'minRepent':
       res = gobang.minRepent()
       break
+    case 'reStart':
+      res = gobang.init({})
+      break
     case 'test':
       res = gobang.test(data)
-      console.log({ res })
       break
     default:
       break
@@ -57,11 +59,13 @@ const senMessage = (type, data) =>
 const autoPlayWithOtherAI = async () => {
   const otherBot = new Chessboard(15, 15)
   const gobangGo = async () => {
+    if (gobang.isFinal) return
     const { i, j } = gobang.maxGo()
     otherBot.put(i, j, Chessboard.MIN)
     senMessage('autoPlay')
   }
   const otherGo = async () => {
+    if (gobang.isFinal) return
     console.time('other AI')
     const { row, column } = Chessboard.prototype.max(otherBot, 2)
     console.timeEnd('other AI')
@@ -71,11 +75,11 @@ const autoPlayWithOtherAI = async () => {
   }
   gobang.genLimit = 40
   gobang.seekDepth = 4
-  while (gobang.autoPlay) {
+  while (gobang.autoPlay && !gobang.isFinal) {
     await gobangGo()
-    await wait(500)
+    await wait(50)
     await otherGo()
-    await wait(500)
+    await wait(50)
   }
 }
 
@@ -83,22 +87,26 @@ const autoPlayWithSelf = async () => {
   const otherGobang = new Gobang({ firstHand: Gobang.MIN, seekDepth: 2, defenseFactor: 4 })
   gobang.genLimit = 40
   gobang.seekDepth = 4
+  otherGobang.defenseFactor = 4
   otherGobang.genLimit = 40
   otherGobang.seekDepth = 4
+  otherGobang.defenseFactor = 4
   const gobangGo = async () => {
+    if (gobang.isFinal) return
     const { i, j } = gobang.maxGo()
     otherGobang.minGo(i, j)
     senMessage('autoPlay')
   }
   const otherGo = async () => {
+    if (gobang.isFinal) return
     const { i: ii, j: jj } = otherGobang.maxGo()
     gobang.minGo(ii, jj)
     senMessage('autoPlay')
   }
-  while (gobang.autoPlay) {
+  while (gobang.autoPlay && !gobang.isFinal) {
     await gobangGo()
-    await wait(500)
+    await wait(50)
     await otherGo()
-    await wait(500)
+    await wait(50)
   }
 }

@@ -21,9 +21,9 @@ export class Gobang {
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 20 // 启发式搜索, 选取节点数
-    this.seekDepth = seekDepth || 6
+    this.seekDepth = seekDepth || 4
     this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
-    this.autoPlay = autoPlay
+    this.autoPlay = autoPlay || false
     this.attackFactor = attackFactor || 1
     this.defenseFactor = defenseFactor || 2
   }

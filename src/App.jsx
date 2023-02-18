@@ -9,6 +9,7 @@ import ABC from './comps/abc'
 import Time from './comps/time'
 import { useEffect } from 'react'
 import Worker from './bot/worker.js?worker'
+import { Music } from './comps/music/music'
 
 let gobang = new Gobang()
 let worker = new Worker()
@@ -85,11 +86,16 @@ const Game = () => {
   const [_, forceUpdate] = useReducer((x) => x + 1, 0)
   const [thinking, thinkingX] = useState(false)
   const [autoPlay, autoPlayX] = useState(false)
-
+  const [musics, dispatchMusic] = useReducer((state, action) => {
+    const { type, value, id } = action
+    if (type === 'add') return [...state, { id: +new Date(), value }]
+    else if (type === 'remove') return state.filter((m) => m.id !== id)
+    else return []
+  }, [])
   const isFinal = gobang.isFinal
 
   const onClickBoard = (i, j) => {
-    console.log({ start, isFinal, thinking })
+    // console.log({ start, isFinal, thinking })
     if (!start) return console.log({ start })
     if (isFinal) return console.log({ isFinal })
     if (thinking) return console.log({ thinking })
@@ -103,13 +109,16 @@ const Game = () => {
   }
 
   const onReStart = () => {
+    worker.terminate()
+    worker = new Worker()
+    worker.postMessage({ type: 'init', data: {} })
     startX(false)
   }
 
   const onStart = (firstHand, autoPlay) => {
     startX(true)
     autoPlayX(autoPlay)
-    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDepth: autoPlay ? 2 : undefined } })
+    worker.postMessage({ type: 'init', data: { firstHand, autoPlay, seekDepth: autoPlay ? 2 : 4 } })
   }
 
   const minRepent = () => {
@@ -121,26 +130,40 @@ const Game = () => {
       const { type, gobang: gobangClone, data } = e.data
       gobang = JSON.parse(gobangClone)
       // console.log('message from worker', type, gobang, data)
-      forceUpdate()
       switch (type) {
         case 'init':
           if (gobang.firstHand === Gobang.MAX && !gobang.autoPlay) maxGo()
+          else forceUpdate()
           break
         case 'minGo':
-          data && maxGo()
+          if (data) {
+            dispatchMusic({ type: 'add', value: 'fall' })
+            maxGo()
+          } else {
+            // 禁止此处
+          }
           break
         case 'maxGo':
+          dispatchMusic({ type: 'add', value: 'fall' })
           thinkingX(false)
+          break
+        case 'autoPlay':
+          dispatchMusic({ type: 'add', value: 'fall' })
           break
         default:
           break
       }
     }
-  }, [])
+  }, [worker])
+
+  useEffect(() => {
+    if (gobang.winner) dispatchMusic({ type: 'add', value: gobang.winner === Gobang.MAX ? 'fail' : 'win' })
+  }, [gobang.winner])
 
   // console.log('update game')
   return (
     <div className="game">
+      <Music musics={musics} onEnded={(x) => dispatchMusic({ type: 'remove', value: x })} />
       <div className="gameInfo">
         <Time />
         <div className=""></div>
