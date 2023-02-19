@@ -6,7 +6,8 @@ export default () => (
   <div className="num">
     {range0(boardLength).map((i) => (
       <div key={i} className="item">
-        {boardLength - i}
+        {/* {boardLength - i} */}
+        {i}
       </div>
     ))}
   </div>

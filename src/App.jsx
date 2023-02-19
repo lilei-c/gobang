@@ -88,7 +88,7 @@ const Game = () => {
   const [autoPlay, autoPlayX] = useState(false)
   const [musics, dispatchMusic] = useReducer((state, action) => {
     const { type, value, id } = action
-    if (type === 'add') return [...state, { id: +new Date(), value }]
+    if (type === 'add') return [...state, { id: +new Date() + Math.random(), value }]
     else if (type === 'remove') return state.filter((m) => m.id !== id)
     else return []
   }, [])
@@ -124,7 +124,7 @@ const Game = () => {
 
   const onAutoPlay = () => {
     autoPlayX(true)
-    worker.postMessage({ type: 'init', data: { firstHand: Gobang.MAX, autoPlay: true, seekDepth: 2 } })
+    worker.postMessage({ type: 'init', data: { firstHand: Gobang.MAX, autoPlay: true, seekDepth: 4 } })
   }
 
   const minRepent = () => {
@@ -146,7 +146,7 @@ const Game = () => {
             dispatchMusic({ type: 'add', value: 'fall' })
             maxGo()
           } else {
-            // 禁止此处
+            // 走子失败
           }
           break
         case 'maxGo':
@@ -164,8 +164,9 @@ const Game = () => {
   }, [worker])
 
   useEffect(() => {
+    if (gobang.isDraw) dispatchMusic({ type: 'add', value: 'draw' })
     if (gobang.winner) dispatchMusic({ type: 'add', value: gobang.winner === Gobang.MAX ? 'fail' : 'win' })
-  }, [gobang.winner])
+  }, [gobang.winner, gobang.isDraw])
 
   // console.log('update game')
   return (

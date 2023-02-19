@@ -13,8 +13,8 @@ onmessage = async function (e) {
     case 'init':
       gobang.init(data)
       if (gobang.autoPlay) {
-        autoPlayWithOtherAI()
-        // autoPlayWithSelf()
+        // autoPlayWithOtherAI()
+        autoPlayWithSelf()
       }
       break
     case 'maxGo':
@@ -73,12 +73,12 @@ const autoPlayWithOtherAI = async () => {
     gobang.minGo(row, column)
     senMessage('autoPlay')
   }
-  gobang.genLimit = 40
-  gobang.seekDepth = 4
+  gobang.genLimit = 800
+  gobang.seekDepth = 2
   while (gobang.autoPlay && !gobang.isFinal) {
-    await gobangGo()
-    await wait(50)
     await otherGo()
+    await wait(50)
+    await gobangGo()
     await wait(50)
   }
 }
@@ -103,10 +103,11 @@ const autoPlayWithSelf = async () => {
     gobang.minGo(ii, jj)
     senMessage('autoPlay')
   }
+  const waitTime = 500
   while (gobang.autoPlay && !gobang.isFinal) {
     await gobangGo()
-    await wait(50)
+    await wait(waitTime)
     await otherGo()
-    await wait(50)
+    await wait(waitTime)
   }
 }

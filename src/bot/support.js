@@ -1,4 +1,16 @@
-export const arrayN = (n, val = null) => Array(n).fill(val)
+/**
+  val 为"引用类型"时, 请明确传递参数 yesHereIsObjectVal
+  另外: 对于"引用类型", arrayN 使用 structuredClone 处理 val, 防止多个变量指向相同引用
+ */
+export const arrayN = (n, val = undefined, yesHereIsObjectVal = false) => {
+  if (typeof val === 'object' && !yesHereIsObjectVal)
+    console.error(`
+    val 为"引用类型"时, 请明确传递参数 yesHereIsObjectVal
+    另外: 对于"引用类型", arrayN 使用 structuredClone 处理 val, 防止多个变量指向相同引用`)
+  return Array(n)
+    .fill()
+    .map(() => structuredClone(val))
+}
 
 // export const colToRow = (arr) => arrayN(arr.length).map((_, i) => arrayN(arr.length).map((_, j) => arr[j][i]))
 

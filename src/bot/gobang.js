@@ -14,18 +14,19 @@ export class Gobang {
     this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
-    this.maxPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, [0, 0, 0, 0]))
-    this.minPointsScore = arrayN(boardLength).map((_) => arrayN(boardLength, [0, 0, 0, 0]))
+    this.maxPointsScore = arrayN(boardLength).map(() => arrayN(boardLength, [0, 0, 0, 0], true))
+    this.minPointsScore = arrayN(boardLength).map(() => arrayN(boardLength, [0, 0, 0, 0], true))
     this.stats = {} // 统计性能优化数据
+    this.initStats()
     this.enableStats = enableStats !== undefined ? enableStats : true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 20 // 启发式搜索, 选取节点数
+    this.genLimit = 80 // 启发式搜索, 选取节点数
     this.seekDepth = seekDepth || 4
     this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
     this.autoPlay = autoPlay || false
     this.attackFactor = attackFactor || 1
-    this.defenseFactor = defenseFactor || 2
+    this.defenseFactor = defenseFactor || 1
   }
   static MAX = MAX
   static MIN = MIN
@@ -138,7 +139,7 @@ export class Gobang {
       score = this.minimax(this.seekDepth)
       console.timeEnd('thinking')
     }
-    console.log({ score })
+    // console.log({ score })
     const { i, j } = score
     this.put(i, j, MAX)
     this.logStats()
@@ -216,6 +217,7 @@ export class Gobang {
       return { score, depth }
     }
     const orderedPoints = this.genChilds(this.getAllOptimalNextStep(), isMax, kill)
+    // kill && isMax && console.log(orderedPoints)
     if (!orderedPoints?.length) return { score: 0 }
     if (isMax) {
       let val = -Infinity
@@ -237,6 +239,9 @@ export class Gobang {
         if (childVal > val) {
           val = childVal
           nextPosition = childPosition
+        } else if (childVal === val && Math.random() > 0.5) {
+          // // 按理说随机选择的局面差不多, 咋明显走的不好, 启发函数隐藏包含一些因素, 评估函数漏了?
+          // nextPosition = childPosition
         }
         alpha = Math.max(alpha, val)
         // beta 剪枝
@@ -426,16 +431,17 @@ export class Gobang {
   }
 
   restoreStack(stack) {
-    let first = this.firstHand
-    let second = first === MAX ? MIN : MAX
-    for (var a = 0; a < stack.length; a++) {
+    const first = this.firstHand
+    const second = first === MAX ? MIN : MAX
+    this.rollback(this.stack.length)
+    for (let a = 0; a < stack.length; a++) {
       const [i, j] = stack[a]
       this.put(i, j, (a & 1) === 0 ? first : second)
     }
   }
 
   test(data) {
-    console.log(eval(data))
+    console.log(Function(data).call(this))
   }
 
   get winner() {

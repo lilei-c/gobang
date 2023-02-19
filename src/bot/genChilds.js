@@ -9,12 +9,15 @@ export function genChilds(points, isMax, kill) {
   let minD4 = []
   let maxL3 = []
   let minL3 = []
-  // 双三
-  let maxDoubleL3 = []
-  let minDoubleL3 = []
+  // 双冲四
+  let maxDoubleD4 = []
+  let minDoubleD4 = []
   // 活三 + 冲四
   let maxD4L3 = []
   let minD4L3 = []
+  // 双三
+  let maxDoubleL3 = []
+  let minDoubleL3 = []
 
   let pointsWithScore = []
   for (let a = 0; a < points.length; a++) {
@@ -42,6 +45,7 @@ export function genChilds(points, isMax, kill) {
       if (l5) maxL5.push(point)
       else if (l4) maxL4.push(point)
       else {
+        if (d4 > 1) maxDoubleD4.push(point)
         if (l3 && d4) maxD4L3.push(point)
         if (l3 > 1) maxDoubleL3.push(point)
         if (l3) maxL3.push(point)
@@ -70,6 +74,7 @@ export function genChilds(points, isMax, kill) {
       if (l5) minL5.push(point)
       else if (l4) minL4.push(point)
       else {
+        if (d4 > 1) minDoubleD4.push(point)
         if (l3 && d4) minD4L3.push(point)
         if (l3 > 1) minDoubleL3.push(point)
         if (l3) minL3.push(point)
@@ -85,11 +90,17 @@ export function genChilds(points, isMax, kill) {
   let rst
   if (isMax) {
     if (kill) {
+      // console.log({ maxL5, maxL4, maxDoubleD4, maxD4L3, maxD4, maxDoubleL3, maxL3 })
       // 算杀只考虑 max 方连续进攻, min 方不需要判断算杀
       if (maxL5.length) return maxL5
       if (minL5.length) return []
       if (maxL4.length) return maxL4
+      if (maxDoubleD4.length) return maxDoubleD4
+      // 冲四+活三 不一定好于单独冲四, 试想, 冲四+活三被拦截且对方形成四, 那这个冲四+活三就没用
+      // 而单独冲四虽被对手拦截, 但对手不能成四, 基于这个冲四后续, 我方可以形成杀棋, 则最先的单独冲四才是正解
       if (maxD4L3.length || maxD4.length) return maxD4L3.concat(maxD4)
+      // if (maxD4L3.length) return maxD4L3
+      // if (maxD4.length) return maxD4
       if (minL4.length || minD4.length) return []
       // 双三可以考虑一下, 考虑活三性能会很差
       // 如果考虑三, 搜索时, min 方的启发函数不应剪切棋子, 否则算杀有概率失误
