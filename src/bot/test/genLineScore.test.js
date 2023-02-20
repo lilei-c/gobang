@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { serialPointMode, chessModeBit } from './genLineScore'
+import { serialPointMode, chessModeBit } from '../genLineScore'
 const { l1, d2, l2, l2x2, d3, l3, d4, l4, l5 } = chessModeBit
 
 const toBits = (x) => +('0b1' + x)

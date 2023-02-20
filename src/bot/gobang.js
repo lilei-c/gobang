@@ -124,7 +124,8 @@ export class Gobang {
 
   maxGo() {
     if (this.isFinal) return
-    this.zobrist.resetHash()
+    console.log(Object.keys(this.zobrist.hash).length)
+    // this.zobrist.resetHash()
     this.initStats()
     let score
     if (this.stack.length > 4) {

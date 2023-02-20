@@ -86,10 +86,10 @@ const autoPlayWithOtherAI = async () => {
 const autoPlayWithSelf = async () => {
   const otherGobang = new Gobang({ firstHand: Gobang.MIN, seekDepth: 2, defenseFactor: 4 })
   gobang.genLimit = 40
-  gobang.seekDepth = 4
+  gobang.seekDepth = 6
   otherGobang.defenseFactor = 4
   otherGobang.genLimit = 40
-  otherGobang.seekDepth = 4
+  otherGobang.seekDepth = 6
   otherGobang.defenseFactor = 4
   const gobangGo = async () => {
     if (gobang.isFinal) return
