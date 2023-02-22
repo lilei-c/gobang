@@ -164,7 +164,7 @@ export function evaluate(kill, log) {
   if (seekEndAndNextIsMax) {
     if (maxL4 || maxD4) return Score.l5
     if (minL4) return -Score.l5
-    if (minD4 > 2 || minL3 > 2 || minL3 & minD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
+    if (minD4 > 1 || minL3 > 1 || minL3 & minD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
     if (maxL3) {
       if (!minL4 && !minD4) maxScore += Score.l4
       // if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
@@ -172,7 +172,7 @@ export function evaluate(kill, log) {
   } else {
     if (minL4 || minD4) return -Score.l5
     if (maxL4) return Score.l5
-    if (maxD4 > 2 || maxL3 > 2 || maxL3 & maxD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
+    if (maxD4 > 1 || maxL3 > 1 || maxL3 & maxD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
     if (minL3) {
       if (!maxL4 && !maxD4) minScore += Score.l4
       // if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
