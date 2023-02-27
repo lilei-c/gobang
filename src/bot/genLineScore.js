@@ -86,7 +86,7 @@ const generateAllModes = (length) => {
   return rst
 }
 
-const allModes = generateAllModes(11)
+const allModes = generateAllModes(12)
 
 const isLive1 = (x) => /010/.test(x) && x.length > 5
 const isDead2 = (x) => /10{0,1}1/.test(x) && x.length >= 5
@@ -114,22 +114,22 @@ allModes.forEach((x) => isDead4(x.slice(3)) && (stat[x] = 'd4') && (serialPointM
 allModes.forEach((x) => isLive4(x.slice(3)) && (stat[x] = 'l4') && (serialPointMode[+x] = l4))
 allModes.forEach((x) => is5(x.slice(3)) && (stat[x] = 'l5') && (serialPointMode[+x] = l5))
 
-console.log(
-  '未构成棋型的组合, 这一部分已经验证',
-  Object.keys(stat)
-    .filter((x) => !stat[x])
-    .map((x) => x.slice(3))
-)
-console.warn('todo: 验证以下棋型是否正确')
-Object.keys(Score).forEach((m) => {
-  console.log(
-    m,
-    Object.keys(stat)
-      .filter((x) => stat[x] === m)
-      .map((x) => x.slice(3))
-  )
-})
+// console.log(
+//   '未构成棋型的组合, 这一部分已经验证',
+//   Object.keys(stat)
+//     .filter((x) => !stat[x])
+//     .map((x) => x.slice(3))
+// )
+// console.warn('todo: 验证以下棋型是否正确')
+// Object.keys(Score).forEach((m) => {
+//   console.log(
+//     m,
+//     Object.keys(stat)
+//       .filter((x) => stat[x] === m)
+//       .map((x) => x.slice(3))
+//   )
+// })
 
-console.log({ allModes, serialPointMode })
+// console.log({ allModes, serialPointMode })
 
 export { serialPointMode }

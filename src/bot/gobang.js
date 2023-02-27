@@ -21,12 +21,13 @@ export class Gobang {
     this.enableStats = enableStats !== undefined ? enableStats : true // 记录 stats
     this.enableLog = false
     this.firstHand = firstHand || MIN
-    this.genLimit = 80 // 启发式搜索, 选取节点数
+    this.genLimit = 20 // 启发式搜索, 选取节点数
     this.seekDepth = seekDepth || 4
-    this.seekKillDepth = 17 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.seekKillDepth = 15 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
     this.autoPlay = autoPlay || false
     this.attackFactor = attackFactor || 1
     this.defenseFactor = defenseFactor || 1
+    this.timeLimit = 2000
   }
   static MAX = MAX
   static MIN = MIN
@@ -34,6 +35,178 @@ export class Gobang {
   static WALL = WALL
 
   genChilds = genChilds
+  evaluate = evaluate
+
+  // todo: 小优化, 算杀成功后, 中止搜索剩余分支
+  seekKill() {
+    // 算杀搜索
+    if (this.stack.length > 4) {
+      this.startTime = +new Date()
+      console.time('thinking kill')
+      for (let depth = 3; depth <= this.seekKillDepth; depth += 2) {
+        this.zobrist.resetHash()
+        if (+new Date() - this.startTime > this.timeLimit) break
+        const score = this.minimax(depth, true, true)
+        if (score?.score >= Score.win) {
+          console.warn('算杀成功 :)', score)
+          const { i, j } = score
+          this.put(i, j, MAX)
+          this.logStats()
+          console.timeEnd('thinking kill')
+          return score
+        }
+      }
+      console.timeEnd('thinking kill')
+    }
+  }
+
+  maxGo() {
+    if (this.isFinal) return
+    console.log(Object.keys(this.zobrist.hash).length)
+    this.initStats()
+
+    const score = this.seekKill()
+    if (score) return score
+
+    // 普通搜索
+    this.startTime = +new Date()
+    let points = this.genChilds(this.getAllOptimalNextStep(), true)
+    points = points.map((x) => ({ i: x[0], j: x[1] }))
+    console.log({ points })
+    if (points.length > 1) {
+      console.time('thinking')
+      for (let depth = 2; depth <= 8; depth += 2) {
+        this.zobrist.resetHash()
+        if (+new Date() - this.startTime > this.timeLimit) break
+        for (let a = 0; a < points.length; a++) {
+          let point = points[a]
+          const { i, j } = point
+          this.put(i, j, MAX)
+          const score = this.minimax(depth - 1, false) // 已经先走一步了, 下一步 min 走子, 这里是 depth -1,
+          this.rollback()
+          if (score.score !== -Infinity) {
+            // 搜索完成的点才更新 // 需要区分? 没搜索完 和 本来就是-Infinity分
+            point.score = score.score
+            point.depth = depth
+            point.stack = score.stack
+          }
+          // console.log('score', score, depth)
+        }
+        // 按分数倒数排序
+        points = points.sort((x1, x2) => x2.score - x1.score)
+        console.log(depth, points)
+      }
+      console.timeEnd('thinking')
+    }
+    const { i, j } = points[0]
+    this.put(i, j, MAX)
+    this.logStats()
+    return points[0]
+  }
+
+  minGo(i, j) {
+    if (this.isFinal) return
+    if (!this.isEmptyPosition(i, j)) return false
+    this.put(i, j, MIN)
+    // console.log('score', this.evaluate())
+    return true
+  }
+
+  minimax(depth, isMax = true, kill = false, alpha = -Infinity, beta = Infinity) {
+    if (this.isFinal || depth === 0) {
+      const score = this.evaluate(kill)
+      return { score, depth, stack: structuredClone(this.stack) }
+    }
+    const orderedPoints = this.genChilds(this.getAllOptimalNextStep(), isMax, kill)
+    if (isMax) {
+      if (orderedPoints.length === 0) return { score: -0.1 }
+      let val = -Infinity
+      let nextPosition = orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
+      let stack
+      for (const childPosition of orderedPoints) {
+        if (+new Date() - this.startTime > this.timeLimit) break
+        const [i, j] = childPosition
+        this.put(i, j, MAX)
+        // if (this.winner) {
+        //   this.rollback()
+        //   return { score: Score.win, i, j }
+        // }
+        this.enableStats && this.stats.abCut.eva++
+        let childVal //= this.zobrist.get()
+        let childStack
+        if (childVal === undefined) {
+          const score = this.minimax(depth - 1, !isMax, kill, alpha, beta)
+          childVal = score.score
+          childStack = score.stack
+          this.zobrist.set(childVal)
+          this.enableStats && this.stats.zobrist.miss++
+        } else {
+          this.enableStats && this.stats.zobrist.hit++
+        }
+        this.rollback()
+        if (childVal > val) {
+          val = childVal
+          nextPosition = childPosition
+          stack = childStack
+        } else if (childVal === val && Math.random() > 0.5) {
+          // // 按理说随机选择的局面差不多, 咋明显走的不好, 启发函数隐藏包含一些因素, 评估函数漏了?
+          // nextPosition = childPosition
+        }
+        alpha = Math.max(alpha, val)
+        // beta 剪枝
+        if (beta <= alpha) {
+          this.enableStats && this.stats.abCut.cut++
+          break
+        }
+      }
+      const [i, j] = nextPosition
+      return { score: val, i, j, stack }
+    } else {
+      if (orderedPoints.length === 0) return { score: 0.2 }
+      let val = Infinity
+      let nextPosition = orderedPoints[0]
+      let stack
+      for (const childPosition of orderedPoints) {
+        if (+new Date() - this.startTime > this.timeLimit) {
+          // 没搜完的分支默认会出现最坏局面, 使程序放弃这个分支, 保留已搜完的部分
+          val = -Infinity
+          break
+        }
+        const [i, j] = childPosition
+        this.put(i, j, MIN)
+        // if (this.winner) {
+        //   this.rollback()
+        //   return { score: -Score.win, i, j }
+        // }
+        this.enableStats && this.stats.abCut.eva++
+        let childVal //= this.zobrist.get()
+        let childStack
+        if (childVal === undefined) {
+          const score = this.minimax(depth - 1, !isMax, kill, alpha, beta)
+          childVal = score.score
+          childStack = score.stack
+          this.zobrist.set(childVal)
+          this.enableStats && this.stats.zobrist.miss++
+        } else {
+          this.enableStats && this.stats.zobrist.hit++
+        }
+        this.rollback()
+        if (childVal < val) {
+          val = childVal
+          nextPosition = childPosition
+          stack = childStack
+        }
+        beta = Math.min(beta, val)
+        // alpah 剪枝
+        if (beta <= alpha) {
+          this.enableStats && this.stats.abCut.cut++
+          break
+        }
+      }
+      const [i, j] = nextPosition
+      return { score: val, i, j, stack }
+    }
+  }
 
   isWall(i, j) {
     return i < 0 || i >= boardLength || j < 0 || j >= boardLength
@@ -43,8 +216,7 @@ export class Gobang {
     // 横
     this.node0 = arrayN(boardLength, 0b000000000000000000000000000000)
     // 竖
-    const buffer = new ArrayBuffer(4 * 15)
-    this.node1 = new Int32Array(buffer)
+    this.node1 = []
     for (let i = 0; i <= 14; i++) this.node1[i] = 0b000000000000000000000000000000
     // 左斜
     // 0  0,0
@@ -122,40 +294,6 @@ export class Gobang {
     }
   }
 
-  maxGo() {
-    if (this.isFinal) return
-    console.log(Object.keys(this.zobrist.hash).length)
-    // this.zobrist.resetHash()
-    this.initStats()
-    let score
-    if (this.stack.length > 4) {
-      console.time('thinking kill')
-      score = this.minimax(this.seekKillDepth, true)
-      console.timeEnd('thinking kill')
-    }
-    if (score?.score >= Score.win) {
-      console.warn('算杀成功 :)')
-    } else {
-      console.time('thinking')
-      score = this.minimax(this.seekDepth)
-      console.timeEnd('thinking')
-    }
-    // console.log({ score })
-    const { i, j } = score
-    this.put(i, j, MAX)
-    this.logStats()
-    // console.log('score', evaluate.call(this, false, true))
-    return score
-  }
-
-  minGo(i, j) {
-    if (this.isFinal) return
-    if (!this.isEmptyPosition(i, j)) return false
-    this.put(i, j, MIN)
-    // console.log('score', evaluate.call(this))
-    return true
-  }
-
   minRepent() {
     if (this.stack.length >= 2) this.rollback(2)
   }
@@ -210,80 +348,6 @@ export class Gobang {
   getChess(i, j) {
     // todo 验证 i,j 合法
     return (this.node0[i] >> (2 * (14 - j))) & 0b11
-  }
-
-  minimax(depth, kill, alpha = -Infinity, beta = Infinity, isMax = true) {
-    if (this.isFinal || depth === 0) {
-      const score = evaluate.call(this, kill)
-      return { score, depth }
-    }
-    const orderedPoints = this.genChilds(this.getAllOptimalNextStep(), isMax, kill)
-    // kill && isMax && console.log(orderedPoints)
-    if (!orderedPoints?.length) return { score: 0 }
-    if (isMax) {
-      let val = -Infinity
-      let nextPosition = orderedPoints[0] // 即使所有评分都等于 -Infinity (必输局), 也要随便走一步
-      for (const childPosition of orderedPoints) {
-        const [i, j] = childPosition
-        this.put(i, j, MAX)
-        this.enableStats && this.stats.abCut.eva++
-        let childVal = this.zobrist.get()
-        if (childVal === undefined) {
-          const score = this.minimax(depth - 1, kill, alpha, beta, !isMax)
-          childVal = score.score
-          this.zobrist.set(childVal)
-          this.enableStats && this.stats.zobrist.miss++
-        } else {
-          this.enableStats && this.stats.zobrist.hit++
-        }
-        this.rollback()
-        if (childVal > val) {
-          val = childVal
-          nextPosition = childPosition
-        } else if (childVal === val && Math.random() > 0.5) {
-          // // 按理说随机选择的局面差不多, 咋明显走的不好, 启发函数隐藏包含一些因素, 评估函数漏了?
-          // nextPosition = childPosition
-        }
-        alpha = Math.max(alpha, val)
-        // beta 剪枝
-        if (beta <= alpha) {
-          this.enableStats && this.stats.abCut.cut++
-          break
-        }
-      }
-      const [i, j] = nextPosition
-      return { score: val, i, j }
-    } else {
-      let val = Infinity
-      let nextPosition = orderedPoints[0]
-      for (const childPosition of orderedPoints) {
-        const [i, j] = childPosition
-        this.put(i, j, MIN)
-        this.enableStats && this.stats.abCut.eva++
-        let childVal = this.zobrist.get()
-        if (childVal === undefined) {
-          const score = this.minimax(depth - 1, kill, alpha, beta, !isMax)
-          childVal = score.score
-          this.zobrist.set(childVal)
-          this.enableStats && this.stats.zobrist.miss++
-        } else {
-          this.enableStats && this.stats.zobrist.hit++
-        }
-        this.rollback()
-        if (childVal < val) {
-          val = childVal
-          nextPosition = childPosition
-        }
-        beta = Math.min(beta, val)
-        // alpah 剪枝
-        if (beta <= alpha) {
-          this.enableStats && this.stats.abCut.cut++
-          break
-        }
-      }
-      const [i, j] = nextPosition
-      return { score: val, i, j }
-    }
   }
 
   getChessInFourDirection(centerI, centerJ, direction) {

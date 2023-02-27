@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { evaluate } from '../evaluate'
 import { Gobang } from '../gobang'
-import { stack } from './stack'
+import { stack } from './stacks/evaluate'
 
 const gobang = new Gobang({ attackFactor: 1, defenseFactor: 1 })
 

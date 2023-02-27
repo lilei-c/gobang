@@ -31,11 +31,11 @@ export function evaluate(kill, log) {
 
   const readAndCountScore = (role, piece) => {
     // 至少是活1
-    // log && console.log(piece.toString(2))
+    log && console.log('piece', piece.toString(2))
     if (piece < 0b100010) return
     const pieceMode = serialPointMode[piece]
     if (!pieceMode) return
-    // log && console.warn(pieceMode.toString(2))
+    log && console.warn(pieceMode.toString(2))
     if (role === MAX) {
       switch (pieceMode) {
         case l1:
@@ -138,8 +138,12 @@ export function evaluate(kill, log) {
     }
   }
 
-  // console.log(check(MAX, MIN, 0b1011000000000001111))
-  // log && console.log(check(MIN, MAX, 0b10001000100000000000))
+  // console.log(1, check(MIN, MAX, 0b10001010101000))
+  // debugger
+  // console.log(2, check(MIN, MAX, 0b1000101010100000000000))
+  // debugger
+  // console.log(3, check(MIN, MAX, 0b10001000100000000000))
+  // debugger
   // return
   // max
   for (let a = 0; a < this.node0.length; a++) check(MAX, MIN, this.node0[a])
@@ -162,9 +166,17 @@ export function evaluate(kill, log) {
   // 搜索结束后, 下一个是谁下棋
   const seekEndAndNextIsMax = (this.seekDepth & 0b1) === 0
   if (seekEndAndNextIsMax) {
-    if (maxL4 || maxD4) return Score.l5
+    if (maxL4) {
+      // console.warn(structuredClone(this.stack), structuredClone(this.maxPointsScore))
+      return Score.l5 * 2
+    }
+    if (maxD4) {
+      // console.warn(structuredClone(this.stack))
+      return Score.l5 * 3
+    }
+
     if (minL4) return -Score.l5
-    if (minD4 > 1 || minL3 > 1 || minL3 & minD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
+    if (minD4 > 1 || minL3 > 1 || (minL3 && minD4)) return -Score.l5 * 3 // "冲四+活三"不严谨, 有可能被一颗子拦截
     if (maxL3) {
       if (!minL4 && !minD4) maxScore += Score.l4
       // if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
@@ -172,7 +184,7 @@ export function evaluate(kill, log) {
   } else {
     if (minL4 || minD4) return -Score.l5
     if (maxL4) return Score.l5
-    if (maxD4 > 1 || maxL3 > 1 || maxL3 & maxD4) return -Score.l5 // "冲四+活三"不严谨, 有可能被一颗子拦截
+    if (maxD4 > 1 || maxL3 > 1 || (maxL3 && maxD4)) return -Score.l5 * 2 // "冲四+活三"不严谨, 有可能被一颗子拦截
     if (minL3) {
       if (!maxL4 && !maxD4) minScore += Score.l4
       // if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整

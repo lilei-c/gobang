@@ -88,40 +88,58 @@ export function genChilds(points, isMax, kill) {
     pointsWithScore.push({ position: [i, j], score: maxScore * this.attackFactor + minScore * this.defenseFactor })
   }
   let rst
-  if (isMax) {
-    if (kill) {
-      // console.log({ maxL5, maxL4, maxDoubleD4, maxD4L3, maxD4, maxDoubleL3, maxL3 })
-      // 算杀只考虑 max 方连续进攻, min 方不需要判断算杀
+  // if (maxL5.length) {
+  //   debugger
+  // }
+
+  // todo : 去重, concat 会有重复, 类似评估函数, 遍历点
+
+  // max 只考虑能形成活四冲四活三的点
+  // min 只考虑堵对面冲四和活三, 己方有冲四时, 也可不堵对面活三
+  if (kill) {
+    // console.log({ maxL5, maxL4, maxDoubleD4, maxD4L3, maxD4, maxDoubleL3, maxL3 })
+    // debugger
+    if (isMax) {
       if (maxL5.length) return maxL5
-      if (minL5.length) return []
+      if (minL5.length) return minL5
       if (maxL4.length) return maxL4
       if (maxDoubleD4.length) return maxDoubleD4
-      // 冲四+活三 不一定好于单独冲四, 试想, 冲四+活三被拦截且对方形成四, 那这个冲四+活三就没用
-      // 而单独冲四虽被对手拦截, 但对手不能成四, 基于这个冲四后续, 我方可以形成杀棋, 则最先的单独冲四才是正解
-      if (maxD4L3.length || maxD4.length) return maxD4L3.concat(maxD4)
-      // if (maxD4L3.length) return maxD4L3
-      // if (maxD4.length) return maxD4
-      if (minL4.length || minD4.length) return []
-      // 双三可以考虑一下, 考虑活三性能会很差
-      // 如果考虑三, 搜索时, min 方的启发函数不应剪切棋子, 否则算杀有概率失误
-      if (maxDoubleL3.length) return maxDoubleL3
-      if (maxL3.length) return maxL3
-      return []
+      // 对手有活三时, 只能强制先手
+      if (minL4.length || minD4L3.length) return maxD4L3.concat(maxD4)
+      // 对手无活三, 可以考虑走活三
+      return maxD4L3.concat(maxDoubleL3).concat(maxD4).concat(maxL3)
+    } else {
+      // debugger
+      // max 的冲四进攻必须拦截
+      if (maxL5.length) return maxL5
+      // 可以己方冲四抢先, 或拦截 max 抢先
+      // 最后需要加个 maxD4, 用来处理 min 方不必堵活四的情况, 例如:堵冲四的同时 min 自己形成活三或冲四
+      if (maxL4.length || maxD4L3.length) return minD4.concat(maxL4).concat(maxD4L3).concat(maxD4)
+      // max 方没有强制先手时, min 要考虑所有落子
+      return pointsWithScore.sort((a, b) => b.score - a.score).map((x) => x.position)
     }
+  }
+
+  if (isMax) {
     // console.log({ kill, maxL5, minL5, maxL4, maxD4L3, minL4, minD4L3, maxDoubleL3, minDoubleL3 })
+    // 以下直接 return 的点的逻辑是, 下了必赢, 或不下必输
     if (maxL5.length) return maxL5
     if (minL5.length) return minL5
     if (maxL4.length) return maxL4
-    if (minL4.length) return minL4
-    if (maxD4L3.length) return maxD4L3 // 不严谨, 如果刚好对方拦截冲四的同时, 它也形成冲四, 则冲四+活三就不是稳赢了
-    if (minD4L3.length) return minD4L3
+    if (minL4.length && !minD4.length && maxD4L3.length) return maxD4L3
+    if (!maxD4.length) {
+      if (minL4.length) return minL4
+      if (minD4L3.length) return minD4L3
+    }
   } else {
     if (minL5.length) return minL5
     if (maxL5.length) return maxL5
     if (minL4.length) return minL4
-    if (maxL4.length) return maxL4
-    if (minD4L3.length) return minD4L3 // 不严谨, 如果刚好对方拦截冲四的同时, 它也形成冲四, 则冲四+活三就不是稳赢了
-    if (maxD4L3.length) return maxD4L3
+    if (!maxL4.length && !maxD4.length && minD4L3.length) return minD4L3
+    if (!minD4.length) {
+      if (maxL4.length) return maxL4
+      if (maxD4L3.length) return maxD4L3
+    }
   }
   rst = pointsWithScore.sort((a, b) => b.score - a.score).map((x) => x.position)
 
