@@ -171,7 +171,7 @@ const Game = () => {
   // console.log('update game')
   return (
     <div className="game">
-      <Music musics={musics} onEnded={(x) => dispatchMusic({ type: 'remove', value: x })} />
+      <Music musics={musics} onEnded={(x) => dispatchMusic({ type: 'remove', id: x })} />
       <div className="gameInfo">
         <Time />
         <div className=""></div>

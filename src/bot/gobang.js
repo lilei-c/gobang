@@ -4,14 +4,24 @@ import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 import { evaluate } from './evaluate'
 import { genChilds } from './genChilds'
+import random from 'random'
 
 export class Gobang {
   constructor(props) {
     this.init({ ...props })
   }
-  init({ firstHand, seekDepth, autoPlay, enableStats, attackFactor, defenseFactor }) {
-    this.totalChessPieces = boardLength * boardLength
+  init({ firstHand, autoPlay, enableStats, attackFactor, defenseFactor }) {
+    this.node0 = []
+    this.node1 = []
+    this.node2 = []
+    this.node3 = []
     this.initNode()
+    // this.nodeHash = []
+    // this.node0Code = []
+    // this.node1Code = []
+    // this.node2Code = []
+    // this.node3Code = []
+    // this.initNodeHashAndCode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
     this.maxPointsScore = arrayN(boardLength).map(() => arrayN(boardLength, [0, 0, 0, 0], true))
@@ -22,12 +32,12 @@ export class Gobang {
     this.enableLog = false
     this.firstHand = firstHand || MIN
     this.genLimit = 20 // 启发式搜索, 选取节点数
-    this.seekDepth = seekDepth || 4
-    this.seekKillDepth = 15 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
+    this.seekDepth = 8
+    this.seekKillDepth = 21 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
     this.autoPlay = autoPlay || false
     this.attackFactor = attackFactor || 1
     this.defenseFactor = defenseFactor || 1
-    this.timeLimit = 2000
+    this.timeLimit = 3000
   }
   static MAX = MAX
   static MIN = MIN
@@ -36,6 +46,57 @@ export class Gobang {
 
   genChilds = genChilds
   evaluate = evaluate
+
+  maxGo() {
+    if (this.isFinal) return
+    console.log(Object.keys(this.zobrist.hash).length)
+    this.initStats()
+    const position = this.getMaxNextStep()
+    const { i, j, score } = position
+    this.put(i, j, MAX)
+    this.logStats()
+    console.log({ score: this.evaluate(), score2: score })
+    return position
+  }
+
+  getMaxNextStep() {
+    let points = this.genChilds(this.getAllOptimalNextStep(), true)
+    points = points.map((x) => ({ i: x[0], j: x[1] }))
+    console.log({ points })
+    // 只有唯一走法时, 不用搜索
+    if (points.length === 1) return points[0]
+
+    // 算杀
+    const score = this.seekKill()
+    if (score) return score
+
+    // 普通搜索
+    this.startTime = +new Date()
+    console.time('thinking')
+    for (let depth = 2; depth <= this.seekDepth; depth += 2) {
+      this.zobrist.resetHash()
+      if (+new Date() - this.startTime > this.timeLimit) break
+      for (let a = 0; a < points.length; a++) {
+        let point = points[a]
+        const { i, j } = point
+        this.put(i, j, MAX)
+        const score = this.minimax(depth - 1, false) // 已经先走一步了, 下一步 min 走子, 这里是 depth -1,
+        this.rollback()
+        if (score.score !== -Infinity) {
+          // 搜索完成的点才更新 // 需要区分? 没搜索完 和 本来就是-Infinity分
+          point.score = score.score
+          point.depth = depth
+          point.stack = score.stack
+        }
+        // console.log('score', score, depth)
+      }
+      // 按分数倒数排序
+      points = points.sort((x1, x2) => x2.score - x1.score)
+      console.log(depth, points)
+    }
+    console.timeEnd('thinking')
+    return points[0]
+  }
 
   // todo: 小优化, 算杀成功后, 中止搜索剩余分支
   seekKill() {
@@ -49,8 +110,6 @@ export class Gobang {
         const score = this.minimax(depth, true, true)
         if (score?.score >= Score.win) {
           console.warn('算杀成功 :)', score)
-          const { i, j } = score
-          this.put(i, j, MAX)
           this.logStats()
           console.timeEnd('thinking kill')
           return score
@@ -60,55 +119,11 @@ export class Gobang {
     }
   }
 
-  maxGo() {
-    if (this.isFinal) return
-    console.log(Object.keys(this.zobrist.hash).length)
-    this.initStats()
-
-    const score = this.seekKill()
-    if (score) return score
-
-    // 普通搜索
-    this.startTime = +new Date()
-    let points = this.genChilds(this.getAllOptimalNextStep(), true)
-    points = points.map((x) => ({ i: x[0], j: x[1] }))
-    console.log({ points })
-    if (points.length > 1) {
-      console.time('thinking')
-      for (let depth = 2; depth <= 8; depth += 2) {
-        this.zobrist.resetHash()
-        if (+new Date() - this.startTime > this.timeLimit) break
-        for (let a = 0; a < points.length; a++) {
-          let point = points[a]
-          const { i, j } = point
-          this.put(i, j, MAX)
-          const score = this.minimax(depth - 1, false) // 已经先走一步了, 下一步 min 走子, 这里是 depth -1,
-          this.rollback()
-          if (score.score !== -Infinity) {
-            // 搜索完成的点才更新 // 需要区分? 没搜索完 和 本来就是-Infinity分
-            point.score = score.score
-            point.depth = depth
-            point.stack = score.stack
-          }
-          // console.log('score', score, depth)
-        }
-        // 按分数倒数排序
-        points = points.sort((x1, x2) => x2.score - x1.score)
-        console.log(depth, points)
-      }
-      console.timeEnd('thinking')
-    }
-    const { i, j } = points[0]
-    this.put(i, j, MAX)
-    this.logStats()
-    return points[0]
-  }
-
   minGo(i, j) {
     if (this.isFinal) return
     if (!this.isEmptyPosition(i, j)) return false
     this.put(i, j, MIN)
-    // console.log('score', this.evaluate())
+    console.log({ score: this.evaluate() })
     return true
   }
 
@@ -216,8 +231,7 @@ export class Gobang {
     // 横
     this.node0 = arrayN(boardLength, 0b000000000000000000000000000000)
     // 竖
-    this.node1 = []
-    for (let i = 0; i <= 14; i++) this.node1[i] = 0b000000000000000000000000000000
+    this.node1 = arrayN(boardLength, 0b000000000000000000000000000000)
     // 左斜
     // 0  0,0
     // 1  0,1  1,0
@@ -255,6 +269,42 @@ export class Gobang {
       }
       this.node3[rowsIndex] = rst
     }
+  }
+
+  initNodeHashAndCode() {
+    return
+    const randFn = () => random.int(0, 2 ** 31)
+    const code = randFn()
+    // 0-14表示MAX, 15-29表示MIN, 30-44墙
+    this.nodeHash = arrayN(45).map(randFn)
+    this.node0Code = arrayN(15, code)
+    this.node1Code = arrayN(15, code)
+    this.node2Code = arrayN(29, code) // 共29列, 但前后各四列少于5子, 不用考虑分数
+    this.node3Code = arrayN(29, code)
+    for (let a = 0; a <= 13; a++)
+      for (let b = 31 + a; b < 45; b++) {
+        this.node2Code[a] ^= this.nodeHash[b]
+        this.node3Code[a] ^= this.nodeHash[b]
+      }
+    for (let a = 15; a <= 28; a++)
+      for (let b = 30; b <= 15 + a; b++) {
+        this.node2Code[a] ^= this.nodeHash[b]
+        this.node3Code[a] ^= this.nodeHash[b]
+      }
+    // 所有走子情况, 数组
+    // const genAllSerial = (n = 15, rst = [[0], [1], [2]]) => {
+    //   if (n === 1) return rst.slice(0, 1)
+    //   let temp = []
+    //   for (let a = 0; a < rst.length; a++) {
+    //     temp.push([...rst[a], 0])
+    //     temp.push([...rst[a], 1])
+    //     temp.push([...rst[a], 2])
+    //   }
+    //   return genAllSerial(n - 1, temp)
+    // }
+    // const allSerial = genAllSerial(14)
+
+    console.log(this.node0Code, this.nodeHash, this.node2Code)
   }
 
   put(i, j, role) {
@@ -555,7 +605,7 @@ export class Gobang {
   }
 
   get isBoardFull() {
-    return this.stack.length === this.totalChessPieces
+    return this.stack.length === boardLength ** 2
   }
 
   get lastChessPosition() {
