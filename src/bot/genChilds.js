@@ -126,19 +126,19 @@ export function genChilds(points, isMax, kill) {
     if (maxL5.length) return maxL5
     if (minL5.length) return minL5
     if (maxL4.length) return maxL4
-    if (minL4.length && !minD4.length && maxD4L3.length) return maxD4L3
+    if (maxD4L3.length && !minL4.length && !minD4.length) return maxD4L3
     if (!maxD4.length) {
       if (minL4.length) return minL4.concat(minD4) // 破坏活四不一定堵中间好, 可能堵两边更好
-      if (minD4L3.length) return minD4L3
+      // if (minD4L3.length) return minD4L3 // minD4L3 不一定直接拦这个点, 可以单独拦4或3
     }
   } else {
     if (minL5.length) return minL5
     if (maxL5.length) return maxL5
     if (minL4.length) return minL4
-    if (!maxL4.length && !maxD4.length && minD4L3.length) return minD4L3
+    if (minD4L3.length && !maxL4.length && !maxD4.length) return minD4L3
     if (!minD4.length) {
       if (maxL4.length) return maxL4.concat(maxD4) // 破坏活四不一定堵中间好, 可能堵两边更好
-      if (maxD4L3.length) return maxD4L3
+      // if (maxD4L3.length) return maxD4L3 // minD4L3 不一定直接拦这个点, 可以单独拦4或3
     }
   }
   rst = pointsWithScore.sort((a, b) => b.score - a.score).map((x) => x.position)

@@ -1,10 +1,23 @@
 import { MAX, MIN, WALL, EMPTY, boardLength, boardCenter } from './const'
-import { countLine, serialPointMode, Score } from './genLineScore'
+import { countLine, serialPointMode } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 import { evaluate } from './evaluate'
 import { genChilds } from './genChilds'
-import random from 'random'
+// import random from 'random'
+
+const Score = {
+  /**/ l1: 1,
+  /**/ d2: 2,
+  /**/ d3: 3,
+  /**/ l2: 8,
+  /**/ l2x2: 16,
+  /**/ l3: 30,
+  /**/ d4: 50,
+  /**/ l4: 500,
+  /**/ l5: 1000,
+  /**/ win: 10000,
+}
 
 export class Gobang {
   constructor(props) {
@@ -147,7 +160,7 @@ export class Gobang {
         //   return { score: Score.win, i, j }
         // }
         this.enableStats && this.stats.abCut.eva++
-        let childVal //= this.zobrist.get()
+        let childVal = this.zobrist.get()
         let childStack
         if (childVal === undefined) {
           const score = this.minimax(depth - 1, !isMax, kill, alpha, beta)
@@ -194,7 +207,7 @@ export class Gobang {
         //   return { score: -Score.win, i, j }
         // }
         this.enableStats && this.stats.abCut.eva++
-        let childVal //= this.zobrist.get()
+        let childVal = this.zobrist.get()
         let childStack
         if (childVal === undefined) {
           const score = this.minimax(depth - 1, !isMax, kill, alpha, beta)
