@@ -2,7 +2,7 @@
 
 试玩
 
-<https://notsofunnyha.github.io/gobang/dist/index.html>
+<https://lilei-c.github.io/gobang/dist/index.html>
 
 # 从零开始
 
