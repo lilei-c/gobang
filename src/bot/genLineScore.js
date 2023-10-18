@@ -87,6 +87,7 @@ const generateAllModes = (length) => {
 }
 
 const allModes = generateAllModes(12)
+console.log(allModes.length)
 
 const isLive1 = (x) => /010/.test(x) && x.length > 5
 const isDead2 = (x) => /10{0,1}1/.test(x) && x.length >= 5

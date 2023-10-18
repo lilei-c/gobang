@@ -414,12 +414,8 @@ export class Gobang {
   }
 
   getChessInFourDirection(centerI, centerJ, direction) {
-    let rst0 = []
-    let rst1 = []
-    let rst2 = []
-    let rst3 = []
     // 横
-    if (direction === undefined || direction === 0) {
+    if (direction === 0) {
       const s = this.node0[centerI]
       const s1 = centerJ >= 4 ? (s >> (2 * (18 - centerJ))) & 0b11 : 0b11
       const s2 = centerJ >= 3 ? (s >> (2 * (17 - centerJ))) & 0b11 : 0b11
@@ -430,11 +426,10 @@ export class Gobang {
       const s7 = centerJ <= 12 ? (s >> (2 * (12 - centerJ))) & 0b11 : 0b11
       const s8 = centerJ <= 11 ? (s >> (2 * (11 - centerJ))) & 0b11 : 0b11
       const s9 = centerJ <= 10 ? (s >> (2 * (10 - centerJ))) & 0b11 : 0b11
-      rst0 = [s1, s2, s3, s4, s5, s6, s7, s8, s9]
-      if (direction === 0) return rst0
+      return [s1, s2, s3, s4, s5, s6, s7, s8, s9]
     }
     // 竖
-    if (direction === undefined || direction === 1) {
+    else if (direction === 1) {
       const v = this.node1[centerJ]
       const v1 = centerI >= 4 ? (v >> (2 * (18 - centerI))) & 0b11 : 0b11
       const v2 = centerI >= 3 ? (v >> (2 * (17 - centerI))) & 0b11 : 0b11
@@ -445,11 +440,10 @@ export class Gobang {
       const v7 = centerI <= 12 ? (v >> (2 * (12 - centerI))) & 0b11 : 0b11
       const v8 = centerI <= 11 ? (v >> (2 * (11 - centerI))) & 0b11 : 0b11
       const v9 = centerI <= 10 ? (v >> (2 * (10 - centerI))) & 0b11 : 0b11
-      rst1 = [v1, v2, v3, v4, v5, v6, v7, v8, v9]
-      if (direction === 1) return rst1
+      return [v1, v2, v3, v4, v5, v6, v7, v8, v9]
     }
     // 左斜
-    if (direction === undefined || direction === 2) {
+    else if (direction === 2) {
       const l = this.node2[centerI + centerJ]
       const l1 = centerI >= 4 ? (l >> (2 * (18 - centerI))) & 0b11 : 0b11
       const l2 = centerI >= 3 ? (l >> (2 * (17 - centerI))) & 0b11 : 0b11
@@ -460,11 +454,10 @@ export class Gobang {
       const l7 = centerI <= 12 ? (l >> (2 * (12 - centerI))) & 0b11 : 0b11
       const l8 = centerI <= 11 ? (l >> (2 * (11 - centerI))) & 0b11 : 0b11
       const l9 = centerI <= 10 ? (l >> (2 * (10 - centerI))) & 0b11 : 0b11
-      rst2 = [l1, l2, l3, l4, l5, l6, l7, l8, l9]
-      if (direction === 2) return rst2
+      return [l1, l2, l3, l4, l5, l6, l7, l8, l9]
     }
     // 右斜
-    if (direction === undefined || direction === 3) {
+    else if (direction === 3) {
       const rr = this.node3[14 + centerI - centerJ]
       const rr1 = centerI >= 4 ? (rr >> (2 * (18 - centerI))) & 0b11 : 0b11
       const rr2 = centerI >= 3 ? (rr >> (2 * (17 - centerI))) & 0b11 : 0b11
@@ -475,10 +468,9 @@ export class Gobang {
       const rr7 = centerI <= 12 ? (rr >> (2 * (12 - centerI))) & 0b11 : 0b11
       const rr8 = centerI <= 11 ? (rr >> (2 * (11 - centerI))) & 0b11 : 0b11
       const rr9 = centerI <= 10 ? (rr >> (2 * (10 - centerI))) & 0b11 : 0b11
-      rst3 = [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
-      if (direction === 3) return rst3
+      return [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
     }
-    return [rst0, rst1, rst2, rst3]
+    return null
   }
 
   getPositionsInFourDirection(centerI, centerJ) {
@@ -576,7 +568,12 @@ export class Gobang {
     if (this.stack.length < 7) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
     const mayBeWinner = this.getChess(lastI, lastJ)
-    const chessInFourDirection = this.getChessInFourDirection(lastI, lastJ)
+    const chessInFourDirection = [
+      this.getChessInFourDirection(lastI, lastJ, 0),
+      this.getChessInFourDirection(lastI, lastJ, 1),
+      this.getChessInFourDirection(lastI, lastJ, 2),
+      this.getChessInFourDirection(lastI, lastJ, 3),
+    ]
     for (let i = 0; i < 4; i++) {
       let count = 0
       const chesses = chessInFourDirection[i]
