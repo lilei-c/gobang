@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { serialPointMode, chessModeBit } from '../genLineScore'
-const { l1, d2, l2, l2x2, d3, l3, d4, l4, l5 } = chessModeBit
+const { l1, d2, l2, d3, l3, d4, l4, l5 } = chessModeBit
 
 const toBits = (x) => +('0b1' + x)
 test.each(['11111', '111111', '111110', '011111', '0111110'])('serialPointMode l5 %s', (a) => {
@@ -15,7 +15,7 @@ test.each(['111101111', '0101110', '111100', '11011'])('serialPointMode d4 %s', 
 test.each(['001110', '010110', '1010101'])('serialPointMode l3 %s', (a) => {
   expect(serialPointMode[toBits(a)]).toEqual(l3)
 })
-test.each(['11100', '11010', '10110'])('serialPointMode d3 %s', (a) => {
+test.each(['11100', '11010', '10110', '0101010'])('serialPointMode d3 %s', (a) => {
   expect(serialPointMode[toBits(a)]).toEqual(d3)
 })
 test.each(['011000', '010100', '001100'])('serialPointMode l2 %s', (a) => {
@@ -24,13 +24,6 @@ test.each(['011000', '010100', '001100'])('serialPointMode l2 %s', (a) => {
 test.each(['01100', '11000', '00011', '10100'])('serialPointMode d2 %s', (a) => {
   expect(serialPointMode[toBits(a)]).toEqual(d2)
 })
-// 双活二
-test.each(['0101010', '001010100', '0001010100', '0010101000', '00010101000', '00101010', '01010100'])(
-  'serialPointMode l2x2 %s',
-  (a) => {
-    expect(serialPointMode[toBits(a)]).toEqual(l2x2)
-  }
-)
 test.each(['010000', '001000', '1000010', '00001000', '1000010'])('serialPointMode l1 %s', (a) => {
   expect(serialPointMode[toBits(a)]).toEqual(l1)
 })

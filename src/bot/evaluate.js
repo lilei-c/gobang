@@ -1,6 +1,6 @@
 import { MAX, MIN, WALL, EMPTY } from './const'
-import { chessModeBit, serialPointMode, Score } from './genLineScore'
-const { l1, d2, l2, l2x2, d3, l3, d4, l4, l5 } = chessModeBit
+import { chessModeBit, Score } from './genLineScore'
+const { l1, d2, l2, d3, l3, d4, l4, l5 } = chessModeBit
 
 // !!!!!!!!   node2, node3 可以各删除 首尾四行
 // 完了尝试 下棋时更新4行评分, 看看两者效率差距
@@ -31,11 +31,14 @@ export function evaluate(kill, log) {
 
   const readAndCountScore = (role, piece) => {
     // 至少是活1
-    log && console.log('piece', piece.toString(2))
+    // log && console.log('piece', piece.toString(2))
     if (piece < 0b100010) return
-    const pieceMode = serialPointMode[piece]
+    const pieceMode = this.serialPointMode[piece] // this. 要快一点
+    // const pieceMode = serialPointMode[piece]
+    // const pieceMode = serialPointModeObj[piece]
+
     if (!pieceMode) return
-    log && console.warn(pieceMode.toString(2))
+    // log && console.warn(pieceMode.toString(2))
     if (role === MAX) {
       switch (pieceMode) {
         case l1:
@@ -44,8 +47,6 @@ export function evaluate(kill, log) {
           return maxD2++
         case l2:
           return maxL2++
-        case l2x2:
-          return (maxL2 += 2)
         case d3:
           return maxD3++
         case l3:
@@ -67,8 +68,6 @@ export function evaluate(kill, log) {
           return minD2++
         case l2:
           return minL2++
-        case l2x2:
-          return (minL2 += 2)
         case d3:
           return minD3++
         case l3:
@@ -86,6 +85,9 @@ export function evaluate(kill, log) {
   }
 
   const check = (chess, block, line) => {
+    // 其实有很多空行, 这些空行根本不需要计算
+    if (line === 0) return
+
     let piece = 0b1
     let emptyCount = 0
     let isBreak = false
@@ -127,8 +129,7 @@ export function evaluate(kill, log) {
       } else {
         emptyCount = 0
         isBreak = false
-        piece <<= 1
-        piece += 1
+        piece = (piece << 1) + 1
         // console.warn({ p: piece.toString(2) })
       }
     }

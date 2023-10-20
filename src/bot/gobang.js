@@ -1,23 +1,12 @@
 import { MAX, MIN, WALL, EMPTY, boardLength, boardCenter } from './const'
-import { countLine, serialPointMode } from './genLineScore'
+import { countLine, serialPointMode, Score } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
 import { evaluate } from './evaluate'
 import { genChilds } from './genChilds'
-// import random from 'random'
 
-const Score = {
-  /**/ l1: 1,
-  /**/ d2: 2,
-  /**/ d3: 3,
-  /**/ l2: 8,
-  /**/ l2x2: 16,
-  /**/ l3: 30,
-  /**/ d4: 50,
-  /**/ l4: 500,
-  /**/ l5: 1000,
-  /**/ win: 10000,
-}
+const countLineMax = countLine(MAX, MIN, WALL)
+const countLineMin = countLine(MIN, MAX, WALL)
 
 export class Gobang {
   constructor(props) {
@@ -29,12 +18,6 @@ export class Gobang {
     this.node2 = []
     this.node3 = []
     this.initNode()
-    // this.nodeHash = []
-    // this.node0Code = []
-    // this.node1Code = []
-    // this.node2Code = []
-    // this.node3Code = []
-    // this.initNodeHashAndCode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
     this.maxPointsScore = arrayN(boardLength).map(() => arrayN(boardLength, [0, 0, 0, 0], true))
@@ -59,6 +42,7 @@ export class Gobang {
 
   genChilds = genChilds
   evaluate = evaluate
+  serialPointMode = serialPointMode
 
   maxGo() {
     if (this.isFinal) return
@@ -284,42 +268,6 @@ export class Gobang {
     }
   }
 
-  initNodeHashAndCode() {
-    return
-    const randFn = () => random.int(0, 2 ** 31)
-    const code = randFn()
-    // 0-14表示MAX, 15-29表示MIN, 30-44墙
-    this.nodeHash = arrayN(45).map(randFn)
-    this.node0Code = arrayN(15, code)
-    this.node1Code = arrayN(15, code)
-    this.node2Code = arrayN(29, code) // 共29列, 但前后各四列少于5子, 不用考虑分数
-    this.node3Code = arrayN(29, code)
-    for (let a = 0; a <= 13; a++)
-      for (let b = 31 + a; b < 45; b++) {
-        this.node2Code[a] ^= this.nodeHash[b]
-        this.node3Code[a] ^= this.nodeHash[b]
-      }
-    for (let a = 15; a <= 28; a++)
-      for (let b = 30; b <= 15 + a; b++) {
-        this.node2Code[a] ^= this.nodeHash[b]
-        this.node3Code[a] ^= this.nodeHash[b]
-      }
-    // 所有走子情况, 数组
-    // const genAllSerial = (n = 15, rst = [[0], [1], [2]]) => {
-    //   if (n === 1) return rst.slice(0, 1)
-    //   let temp = []
-    //   for (let a = 0; a < rst.length; a++) {
-    //     temp.push([...rst[a], 0])
-    //     temp.push([...rst[a], 1])
-    //     temp.push([...rst[a], 2])
-    //   }
-    //   return genAllSerial(n - 1, temp)
-    // }
-    // const allSerial = genAllSerial(14)
-
-    console.log(this.node0Code, this.nodeHash, this.node2Code)
-  }
-
   put(i, j, role) {
     this.zobrist.go(i, j, role === MAX)
     this.stack.push([i, j])
@@ -416,61 +364,42 @@ export class Gobang {
   getChessInFourDirection(centerI, centerJ, direction) {
     // 横
     if (direction === 0) {
-      const s = this.node0[centerI]
-      const s1 = centerJ >= 4 ? (s >> (2 * (18 - centerJ))) & 0b11 : 0b11
-      const s2 = centerJ >= 3 ? (s >> (2 * (17 - centerJ))) & 0b11 : 0b11
-      const s3 = centerJ >= 2 ? (s >> (2 * (16 - centerJ))) & 0b11 : 0b11
-      const s4 = centerJ >= 1 ? (s >> (2 * (15 - centerJ))) & 0b11 : 0b11
-      const s5 = (s >> (2 * (14 - centerJ))) & 0b11
-      const s6 = centerJ <= 13 ? (s >> (2 * (13 - centerJ))) & 0b11 : 0b11
-      const s7 = centerJ <= 12 ? (s >> (2 * (12 - centerJ))) & 0b11 : 0b11
-      const s8 = centerJ <= 11 ? (s >> (2 * (11 - centerJ))) & 0b11 : 0b11
-      const s9 = centerJ <= 10 ? (s >> (2 * (10 - centerJ))) & 0b11 : 0b11
-      return [s1, s2, s3, s4, s5, s6, s7, s8, s9]
+      const ss = this.node0[centerI]
+      const ss1 = centerJ >= 4 ? (ss >> (2 * (18 - centerJ))) & 0b11 : 0b11
+      const ss2 = centerJ >= 3 ? (ss >> (2 * (17 - centerJ))) & 0b11 : 0b11
+      const ss3 = centerJ >= 2 ? (ss >> (2 * (16 - centerJ))) & 0b11 : 0b11
+      const ss4 = centerJ >= 1 ? (ss >> (2 * (15 - centerJ))) & 0b11 : 0b11
+      const ss5 = (ss >> (2 * (14 - centerJ))) & 0b11
+      const ss6 = centerJ <= 13 ? (ss >> (2 * (13 - centerJ))) & 0b11 : 0b11
+      const ss7 = centerJ <= 12 ? (ss >> (2 * (12 - centerJ))) & 0b11 : 0b11
+      const ss8 = centerJ <= 11 ? (ss >> (2 * (11 - centerJ))) & 0b11 : 0b11
+      const ss9 = centerJ <= 10 ? (ss >> (2 * (10 - centerJ))) & 0b11 : 0b11
+      return [ss1, ss2, ss3, ss4, ss5, ss6, ss7, ss8, ss9]
+    } else {
+      let ss
+      // 竖
+      if (direction === 1) {
+        ss = this.node1[centerJ]
+      }
+      // 左斜
+      else if (direction === 2) {
+        ss = this.node2[centerI + centerJ]
+      }
+      // 右斜
+      else if (direction === 3) {
+        ss = this.node3[14 + centerI - centerJ]
+      }
+      const ss1 = centerI >= 4 ? (ss >> (2 * (18 - centerI))) & 0b11 : 0b11
+      const ss2 = centerI >= 3 ? (ss >> (2 * (17 - centerI))) & 0b11 : 0b11
+      const ss3 = centerI >= 2 ? (ss >> (2 * (16 - centerI))) & 0b11 : 0b11
+      const ss4 = centerI >= 1 ? (ss >> (2 * (15 - centerI))) & 0b11 : 0b11
+      const ss5 = (ss >> (2 * (14 - centerI))) & 0b11
+      const ss6 = centerI <= 13 ? (ss >> (2 * (13 - centerI))) & 0b11 : 0b11
+      const ss7 = centerI <= 12 ? (ss >> (2 * (12 - centerI))) & 0b11 : 0b11
+      const ss8 = centerI <= 11 ? (ss >> (2 * (11 - centerI))) & 0b11 : 0b11
+      const ss9 = centerI <= 10 ? (ss >> (2 * (10 - centerI))) & 0b11 : 0b11
+      return [ss1, ss2, ss3, ss4, ss5, ss6, ss7, ss8, ss9]
     }
-    // 竖
-    else if (direction === 1) {
-      const v = this.node1[centerJ]
-      const v1 = centerI >= 4 ? (v >> (2 * (18 - centerI))) & 0b11 : 0b11
-      const v2 = centerI >= 3 ? (v >> (2 * (17 - centerI))) & 0b11 : 0b11
-      const v3 = centerI >= 2 ? (v >> (2 * (16 - centerI))) & 0b11 : 0b11
-      const v4 = centerI >= 1 ? (v >> (2 * (15 - centerI))) & 0b11 : 0b11
-      const v5 = (v >> (2 * (14 - centerI))) & 0b11
-      const v6 = centerI <= 13 ? (v >> (2 * (13 - centerI))) & 0b11 : 0b11
-      const v7 = centerI <= 12 ? (v >> (2 * (12 - centerI))) & 0b11 : 0b11
-      const v8 = centerI <= 11 ? (v >> (2 * (11 - centerI))) & 0b11 : 0b11
-      const v9 = centerI <= 10 ? (v >> (2 * (10 - centerI))) & 0b11 : 0b11
-      return [v1, v2, v3, v4, v5, v6, v7, v8, v9]
-    }
-    // 左斜
-    else if (direction === 2) {
-      const l = this.node2[centerI + centerJ]
-      const l1 = centerI >= 4 ? (l >> (2 * (18 - centerI))) & 0b11 : 0b11
-      const l2 = centerI >= 3 ? (l >> (2 * (17 - centerI))) & 0b11 : 0b11
-      const l3 = centerI >= 2 ? (l >> (2 * (16 - centerI))) & 0b11 : 0b11
-      const l4 = centerI >= 1 ? (l >> (2 * (15 - centerI))) & 0b11 : 0b11
-      const l5 = (l >> (2 * (14 - centerI))) & 0b11
-      const l6 = centerI <= 13 ? (l >> (2 * (13 - centerI))) & 0b11 : 0b11
-      const l7 = centerI <= 12 ? (l >> (2 * (12 - centerI))) & 0b11 : 0b11
-      const l8 = centerI <= 11 ? (l >> (2 * (11 - centerI))) & 0b11 : 0b11
-      const l9 = centerI <= 10 ? (l >> (2 * (10 - centerI))) & 0b11 : 0b11
-      return [l1, l2, l3, l4, l5, l6, l7, l8, l9]
-    }
-    // 右斜
-    else if (direction === 3) {
-      const rr = this.node3[14 + centerI - centerJ]
-      const rr1 = centerI >= 4 ? (rr >> (2 * (18 - centerI))) & 0b11 : 0b11
-      const rr2 = centerI >= 3 ? (rr >> (2 * (17 - centerI))) & 0b11 : 0b11
-      const rr3 = centerI >= 2 ? (rr >> (2 * (16 - centerI))) & 0b11 : 0b11
-      const rr4 = centerI >= 1 ? (rr >> (2 * (15 - centerI))) & 0b11 : 0b11
-      const rr5 = (rr >> (2 * (14 - centerI))) & 0b11
-      const rr6 = centerI <= 13 ? (rr >> (2 * (13 - centerI))) & 0b11 : 0b11
-      const rr7 = centerI <= 12 ? (rr >> (2 * (12 - centerI))) & 0b11 : 0b11
-      const rr8 = centerI <= 11 ? (rr >> (2 * (11 - centerI))) & 0b11 : 0b11
-      const rr9 = centerI <= 10 ? (rr >> (2 * (10 - centerI))) & 0b11 : 0b11
-      return [rr1, rr2, rr3, rr4, rr5, rr6, rr7, rr8, rr9]
-    }
-    return null
   }
 
   getPositionsInFourDirection(centerI, centerJ) {
@@ -517,33 +446,20 @@ export class Gobang {
     }
   }
 
-  //
+  /**
+   * 启发式搜索
+   * 假如在此处落子后, 米字线上能得到的分数, 即为该点的分数
+   */
   updatePointScore(position, direction) {
     const [i, j] = position
     if (this.getChess(i, j) !== EMPTY) {
       this.maxPointsScore[i][j] = [0, 0, 0, 0]
       this.minPointsScore[i][j] = [0, 0, 0, 0]
     } else {
-      // 这里 evaPoint 的 getChessInFourDirection 重复, 可以优化
-      this.maxPointsScore[i][j][direction] = this.evaPoint(i, j, MAX, direction)
-      this.minPointsScore[i][j][direction] = this.evaPoint(i, j, MIN, direction)
+      const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
+      this.maxPointsScore[i][j][direction] = serialPointMode[countLineMax(chessInFourDirection)] || 0
+      this.minPointsScore[i][j][direction] = serialPointMode[countLineMin(chessInFourDirection)] || 0
     }
-  }
-
-  /**
-   * 启发式搜索
-   * 假如在此处落子后, 米字线上能得到的分数, 即为该点的分数
-   */
-  evaPoint(i, j, role, direction) {
-    const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
-    const chess = role === MAX ? MAX : MIN
-    const block = role === MAX ? MIN : MAX
-    const countFn = countLine(chess, block, WALL)
-    let rst = 0
-    const count = countFn(chessInFourDirection)
-    const score = serialPointMode[count]
-    rst += score || 0
-    return rst
   }
 
   saveStack() {
@@ -556,7 +472,8 @@ export class Gobang {
     this.rollback(this.stack.length)
     for (let a = 0; a < stack.length; a++) {
       const [i, j] = stack[a]
-      this.put(i, j, (a & 1) === 0 ? first : second)
+      const currentPlayer = a % 2 === 0 ? first : second
+      this.put(i, j, currentPlayer)
     }
   }
 
@@ -668,6 +585,7 @@ export class Gobang {
       },
     }
   }
+
   logStats() {
     this.enableStats &&
       Object.keys(this.stats).forEach((m) => {

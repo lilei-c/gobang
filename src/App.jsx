@@ -11,7 +11,7 @@ import { useEffect } from 'react'
 import Worker from './bot/worker.js?worker'
 import { Music } from './comps/music/music'
 
-let gobang = new Gobang()
+let gobang //= new Gobang()
 let worker = new Worker()
 // 方便调试
 // test('console.log(this.node)')
@@ -92,7 +92,7 @@ const Game = () => {
     else if (type === 'remove') return state.filter((m) => m.id !== id)
     else return []
   }, [])
-  const isFinal = gobang.isFinal
+  const isFinal = gobang?.isFinal
 
   const onClickBoard = (i, j) => {
     // console.log({ start, isFinal, thinking })
@@ -164,48 +164,52 @@ const Game = () => {
   }, [worker])
 
   useEffect(() => {
-    if (gobang.isDraw) dispatchMusic({ type: 'add', value: 'draw' })
-    if (gobang.winner) dispatchMusic({ type: 'add', value: gobang.winner === Gobang.MAX ? 'fail' : 'win' })
-  }, [gobang.winner, gobang.isDraw])
+    if (gobang?.isDraw) dispatchMusic({ type: 'add', value: 'draw' })
+    if (gobang?.winner) dispatchMusic({ type: 'add', value: gobang.winner === Gobang.MAX ? 'fail' : 'win' })
+  }, [gobang?.winner, gobang?.isDraw])
+
+  useEffect(() => worker.postMessage({ type: 'new Gobang' }), [])
 
   // console.log('update game')
   return (
-    <div className="game">
-      <Music musics={musics} onEnded={(x) => dispatchMusic({ type: 'remove', id: x })} />
-      <div className="gameInfo">
-        <Time />
-        <div className=""></div>
-      </div>
-      <div className="gameBoard">
-        <Num />
-        <div className="center">
-          <ABC />
-          <Board squares={gobang.node} onClick={debounce(onClickBoard, 20)} />
-          <ABC />
+    gobang && (
+      <div className="game">
+        <Music musics={musics} onEnded={(x) => dispatchMusic({ type: 'remove', id: x })} />
+        <div className="gameInfo">
+          <Time />
+          <div className=""></div>
         </div>
-        <Num />
+        <div className="gameBoard">
+          <Num />
+          <div className="center">
+            <ABC />
+            <Board squares={gobang.node} onClick={debounce(onClickBoard, 20)} />
+            <ABC />
+          </div>
+          <Num />
+        </div>
+        <div className="opbtns">
+          {autoPlay && <button onClick={onReStart}>开始游戏</button>}
+          {!autoPlay && !start && (
+            <>
+              <button onClick={() => onStart(Gobang.MAX)}>电脑先手</button>
+              <button onClick={() => onStart(Gobang.MIN)}>玩家先手</button>
+              <button onClick={onAutoPlay}>电脑vs电脑</button>
+            </>
+          )}
+          {start && (
+            <>
+              <button onClick={onReStart}>重来</button>
+              <button onClick={minRepent}>悔棋</button>
+            </>
+          )}
+        </div>
+        <div className="game-info">
+          {gobang.winner && <div>{gobang.winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}</div>}
+          <ol>{/* TODO */}</ol>
+        </div>
       </div>
-      <div className="opbtns">
-        {autoPlay && <button onClick={onReStart}>开始游戏</button>}
-        {!autoPlay && !start && (
-          <>
-            <button onClick={() => onStart(Gobang.MAX)}>电脑先手</button>
-            <button onClick={() => onStart(Gobang.MIN)}>玩家先手</button>
-            <button onClick={onAutoPlay}>电脑vs电脑</button>
-          </>
-        )}
-        {start && (
-          <>
-            <button onClick={onReStart}>重来</button>
-            <button onClick={minRepent}>悔棋</button>
-          </>
-        )}
-      </div>
-      <div className="game-info">
-        {gobang.winner && <div>{gobang.winner === Gobang.MAX ? '少侠请努力' : '干得漂亮'}</div>}
-        <ol>{/* TODO */}</ol>
-      </div>
-    </div>
+    )
   )
 }
 
