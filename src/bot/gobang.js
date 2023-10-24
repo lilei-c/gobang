@@ -17,11 +17,12 @@ export class Gobang {
     this.node1 = []
     this.node2 = []
     this.node3 = []
+    this.neighborNode = [] // 用来记录棋子周围是否有落子
     this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
-    this.maxPointsScore = arrayN(boardLength).map(() => arrayN(boardLength, [0, 0, 0, 0], true))
-    this.minPointsScore = arrayN(boardLength).map(() => arrayN(boardLength, [0, 0, 0, 0], true))
+    this.maxPointsScore = arrayN(boardLength, arrayN(boardLength, [0, 0, 0, 0]))
+    this.minPointsScore = arrayN(boardLength, arrayN(boardLength, [0, 0, 0, 0]))
     this.stats = {} // 统计性能优化数据
     this.initStats()
     this.enableStats = enableStats !== undefined ? enableStats : true // 记录 stats
@@ -127,7 +128,11 @@ export class Gobang {
   minimax(depth, isMax = true, kill = false, alpha = -Infinity, beta = Infinity) {
     if (this.isFinal || depth === 0) {
       const score = this.evaluate(kill)
-      return { score, depth, stack: structuredClone(this.stack) }
+      return {
+        score,
+        depth,
+        // stack: structuredClone(this.stack)
+      }
     }
     const orderedPoints = this.genChilds(this.getAllOptimalNextStep(), isMax, kill)
     if (isMax) {
@@ -266,6 +271,11 @@ export class Gobang {
       }
       this.node3[rowsIndex] = rst
     }
+
+    // 初始值为 0, 周围落子后 +1, 周围取消落子 -1, 自身落子 -64, 自身取消落子 +64
+    // 这样该点位 < 0 自身有落子; = 0 无邻居, > 0 有邻居
+    // 注意: 自身落子需要减去较大的值, 避免 周围落子数 - 自身落子 >= 0 的情况
+    this.neighborNode = arrayN(boardLength, arrayN(boardLength, 0))
   }
 
   put(i, j, role) {
@@ -280,6 +290,8 @@ export class Gobang {
     this.node2[i + j] = this.node2[i + j] | (role << (2 * (14 - i)))
     // 右斜
     this.node3[14 + i - j] = this.node3[14 + i - j] | (role << (2 * (14 - i)))
+
+    this.updateNeighbor(i, j, true)
 
     this.updateFourLineScore(i, j)
   }
@@ -301,6 +313,8 @@ export class Gobang {
       // 右斜
       this.node3[14 + i - j] = (this.node3[14 + i - j] | (0b11 << move2)) ^ (0b11 << move2)
 
+      this.updateNeighbor(i, j, false)
+
       this.updateFourLineScore(i, j)
     }
   }
@@ -313,18 +327,6 @@ export class Gobang {
     return !this.isWall(i, j) && this.getChess(i, j) === EMPTY
   }
 
-  getNearPositions(position) {
-    const rst = []
-    const seekStep = 2
-    const [centerI, centerJ] = position
-    for (let i = -seekStep; i <= seekStep; i++)
-      for (let j = -seekStep; j <= seekStep; j++)
-        if (this.isEmptyPosition(i + centerI, j + centerJ)) {
-          rst.push([i + centerI, j + centerJ])
-        }
-    return rst
-  }
-
   getAllOptimalNextStep() {
     if (this.stack.length === 0) return [[boardCenter, boardCenter]]
     if (this.stack.length === 1) {
@@ -333,27 +335,29 @@ export class Gobang {
       const j = boardCenter + (Math.random() > 0.5 ? 1 : -1)
       return [[i, j]]
     }
-
+    //
     let rst = []
     for (let i = 0; i < boardLength; i++) {
       for (let j = 0; j < boardLength; j++) {
-        if (this.getChess(i, j) === EMPTY && this.haveNeighbor(i, j)) rst.push([i, j])
+        if (this.neighborNode[i][j] > 0) rst.push([i, j])
       }
     }
     return rst
   }
 
-  haveNeighbor(centerI, centerJ) {
+  updateNeighbor(centerI, centerJ, isFall) {
+    if (isFall) this.neighborNode[centerI][centerJ] -= 64
+    else this.neighborNode[centerI][centerJ] += 64
+
     const seekStep = 2
     for (let i = -seekStep; i <= seekStep; i++) {
       if (i + centerI < 0 || i + centerI >= boardLength) continue
       for (let j = -seekStep; j <= seekStep; j++) {
         if (j + centerJ < 0 || j + centerJ >= boardLength || (i === 0 && j === 0)) continue
-        const have = this.getChess(i + centerI, centerJ + j) !== EMPTY
-        if (have) return true
+        if (isFall) this.neighborNode[i + centerI][centerJ + j] += 1
+        else this.neighborNode[i + centerI][centerJ + j] -= 1
       }
     }
-    return false
   }
 
   getChess(i, j) {
@@ -457,8 +461,8 @@ export class Gobang {
       this.minPointsScore[i][j] = [0, 0, 0, 0]
     } else {
       const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
-      this.maxPointsScore[i][j][direction] = serialPointMode[countLineMax(chessInFourDirection)] || 0
-      this.minPointsScore[i][j][direction] = serialPointMode[countLineMin(chessInFourDirection)] || 0
+      this.maxPointsScore[i][j][direction] = this.serialPointMode[countLineMax(chessInFourDirection)] || 0
+      this.minPointsScore[i][j][direction] = this.serialPointMode[countLineMin(chessInFourDirection)] || 0
     }
   }
 
