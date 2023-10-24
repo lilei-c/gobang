@@ -293,7 +293,7 @@ export class Gobang {
 
     this.updateNeighbor(i, j, true)
 
-    this.updateFourLineScore(i, j)
+    this.updatePointScore(i, j)
   }
 
   rollback(steps = 1) {
@@ -315,7 +315,7 @@ export class Gobang {
 
       this.updateNeighbor(i, j, false)
 
-      this.updateFourLineScore(i, j)
+      this.updatePointScore(i, j)
     }
   }
 
@@ -438,31 +438,26 @@ export class Gobang {
     return [rst0, rst1, rst2, rst3]
   }
 
-  // i,j 米字线上的点都需要更新
-  updateFourLineScore(i, j) {
+  /**
+   * 启发式搜索
+   * 假如在此处落子后, 米字线上能得到的分数, 即为该点的分数
+   * i,j 米字线上的点都需要更新
+   */
+  updatePointScore(i, j) {
     const positionsInFourDirection = this.getPositionsInFourDirection(i, j)
     for (let direction = 0; direction < 4; direction++) {
       const positions = positionsInFourDirection[direction]
       for (let index = 0; index < positions.length; index++) {
-        const position = positions[index]
-        this.updatePointScore(position, direction)
+        const [i, j] = positions[index]
+        if (this.getChess(i, j) !== EMPTY) {
+          this.maxPointsScore[i][j] = [0, 0, 0, 0]
+          this.minPointsScore[i][j] = [0, 0, 0, 0]
+        } else {
+          const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
+          this.maxPointsScore[i][j][direction] = this.serialPointMode[countLineMax(chessInFourDirection)] || 0
+          this.minPointsScore[i][j][direction] = this.serialPointMode[countLineMin(chessInFourDirection)] || 0
+        }
       }
-    }
-  }
-
-  /**
-   * 启发式搜索
-   * 假如在此处落子后, 米字线上能得到的分数, 即为该点的分数
-   */
-  updatePointScore(position, direction) {
-    const [i, j] = position
-    if (this.getChess(i, j) !== EMPTY) {
-      this.maxPointsScore[i][j] = [0, 0, 0, 0]
-      this.minPointsScore[i][j] = [0, 0, 0, 0]
-    } else {
-      const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
-      this.maxPointsScore[i][j][direction] = this.serialPointMode[countLineMax(chessInFourDirection)] || 0
-      this.minPointsScore[i][j][direction] = this.serialPointMode[countLineMin(chessInFourDirection)] || 0
     }
   }
 
