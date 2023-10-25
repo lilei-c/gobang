@@ -2,15 +2,7 @@ import { MAX, MIN, WALL, EMPTY } from './const'
 import { chessModeBit, Score } from './genLineScore'
 const { l1, d2, l2, d3, l3, d4, l4, l5 } = chessModeBit
 
-// !!!!!!!!   node2, node3 可以各删除 首尾四行
-// 完了尝试 下棋时更新4行评分, 看看两者效率差距
-// 记录行列, 只更新下过子的地方?
-export function evaluate(kill, log) {
-  const winner = this.winner
-  if (winner === MAX) return Score.win
-  else if (winner === MIN) return -Score.win
-  if (kill) return 0 // 算杀结果必须是5连, 否则算杀失败
-
+export function evaluateOnlyLine(node, lineIndex, log) {
   let maxL5 = 0
   let maxL4 = 0
   let maxD4 = 0
@@ -147,15 +139,9 @@ export function evaluate(kill, log) {
   // debugger
   // return
   // max
-  for (let a = 0; a < this.node0.length; a++) check(MAX, MIN, this.node0[a])
-  for (let a = 0; a < this.node1.length; a++) check(MAX, MIN, this.node1[a])
-  for (let a = 0; a < this.node2.length; a++) check(MAX, MIN, this.node2[a])
-  for (let a = 0; a < this.node3.length; a++) check(MAX, MIN, this.node3[a])
+  check(MAX, MIN, node[lineIndex])
   // min
-  for (let a = 0; a < this.node0.length; a++) check(MIN, MAX, this.node0[a])
-  for (let a = 0; a < this.node1.length; a++) check(MIN, MAX, this.node1[a])
-  for (let a = 0; a < this.node2.length; a++) check(MIN, MAX, this.node2[a])
-  for (let a = 0; a < this.node3.length; a++) check(MIN, MAX, this.node3[a])
+  check(MIN, MAX, node[lineIndex])
 
   if (log) {
     console.log({ maxL1, maxD2, maxL2, maxD3, maxL3, maxD4, maxL4, maxL5 })
@@ -164,33 +150,35 @@ export function evaluate(kill, log) {
 
   let maxScore = 0
   let minScore = 0
-  // 搜索结束后, 下一个是谁下棋
-  const seekEndAndNextIsMax = (this.seekDepth & 0b1) === 0
-  if (seekEndAndNextIsMax) {
-    if (maxL4) {
-      // console.warn(structuredClone(this.stack), structuredClone(this.maxPointsScore))
-      return Score.l5 * 2
-    }
-    if (maxD4) {
-      // console.warn(structuredClone(this.stack))
-      return Score.l5 * 3
-    }
 
-    if (minL4) return -Score.l5
-    if (minD4 > 1 || minL3 > 1 || (minL3 && minD4)) return -Score.l5 * 3 // "冲四+活三"不严谨, 有可能被一颗子拦截
-    if (maxL3) {
-      if (!minL4 && !minD4) maxScore += Score.l4
-      // if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
-    }
-  } else {
-    if (minL4 || minD4) return -Score.l5
-    if (maxL4) return Score.l5
-    if (maxD4 > 1 || maxL3 > 1 || (maxL3 && maxD4)) return -Score.l5 * 2 // "冲四+活三"不严谨, 有可能被一颗子拦截
-    if (minL3) {
-      if (!maxL4 && !maxD4) minScore += Score.l4
-      // if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
-    }
-  }
+  // 这段逻辑能不能添加到 evaluate ?
+  // // 搜索结束后, 下一个是谁下棋
+  // const seekEndAndNextIsMax = (this.seekDepth & 0b1) === 0
+  // if (seekEndAndNextIsMax) {
+  //   if (maxL4) {
+  //     // console.warn(structuredClone(this.stack), structuredClone(this.maxPointsScore))
+  //     return Score.l5 * 2
+  //   }
+  //   if (maxD4) {
+  //     // console.warn(structuredClone(this.stack))
+  //     return Score.l5 * 3
+  //   }
+
+  //   if (minL4) return -Score.l5
+  //   if (minD4 > 1 || minL3 > 1 || (minL3 && minD4)) return -Score.l5 * 3 // "冲四+活三"不严谨, 有可能被一颗子拦截
+  //   if (maxL3) {
+  //     if (!minL4 && !minD4) maxScore += Score.l4
+  //     // if (maxL3 > 1) maxScore += Score.l3 * 2 // 额外奖励, 可调整
+  //   }
+  // } else {
+  //   if (minL4 || minD4) return -Score.l5
+  //   if (maxL4) return Score.l5
+  //   if (maxD4 > 1 || maxL3 > 1 || (maxL3 && maxD4)) return -Score.l5 * 2 // "冲四+活三"不严谨, 有可能被一颗子拦截
+  //   if (minL3) {
+  //     if (!maxL4 && !maxD4) minScore += Score.l4
+  //     // if (minL3 > 1) minScore += Score.l3 * 2 // 额外奖励, 可调整
+  //   }
+  // }
   // if (maxL2 > 2) maxScore += Score.l2 // 额外奖励, 可调整
   // if (minL2 > 2) minScore += Score.l2 // 额外奖励, 可调整
   maxScore =
@@ -211,7 +199,19 @@ export function evaluate(kill, log) {
     Score.l2 * minL2 +
     Score.d2 * minD2 +
     Score.l1 * minD2
-  // 后手时, 加强防守
-  let score = maxScore * this.attackFactor - minScore * (this.firstHand === MIN ? this.defenseFactor : 1)
+  // // 后手时, 加强防守
+  // let score = maxScore * this.attackFactor - minScore * (this.firstHand === MIN ? this.defenseFactor : 1)
+  let score = maxScore - minScore
+  return score
+}
+
+export function evaluate() {
+  let score = 0
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < this.scoreNode[i].length; j++) {
+      const lineScore = this.scoreNode[i][j]
+      if (lineScore) score += lineScore
+    }
+  }
   return score
 }

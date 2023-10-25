@@ -35,10 +35,10 @@ onmessage = async function (e) {
     default:
       break
   }
-  senMessage(type, res)
+  sendMessage(type, res)
 }
 
-const senMessage = (type, data) =>
+const sendMessage = (type, data) =>
   postMessage({
     type,
     data,
@@ -55,6 +55,9 @@ const senMessage = (type, data) =>
     }),
   })
 
+self.gobang = gobang // 仅仅测试用
+self.sendMessage = sendMessage // 仅仅测试用
+
 // 和其它AI对弈, 方便测试
 const autoPlayWithOtherAI = async () => {
   const otherBot = new Chessboard(15, 15)
@@ -62,7 +65,7 @@ const autoPlayWithOtherAI = async () => {
     if (gobang.isFinal) return
     const { i, j } = gobang.maxGo()
     otherBot.put(i, j, Chessboard.MIN)
-    senMessage('autoPlay')
+    sendMessage('autoPlay')
   }
   const otherGo = async () => {
     if (gobang.isFinal) return
@@ -71,7 +74,7 @@ const autoPlayWithOtherAI = async () => {
     console.timeEnd('other AI')
     otherBot.put(row, column, Chessboard.MAX)
     gobang.minGo(row, column)
-    senMessage('autoPlay')
+    sendMessage('autoPlay')
   }
   const waitTime = 100
   while (gobang.autoPlay && !gobang.isFinal) {
@@ -93,13 +96,13 @@ const autoPlayWithSelf = async () => {
     if (gobang.isFinal) return
     const { i, j } = gobang.maxGo()
     otherGobang.minGo(i, j)
-    senMessage('autoPlay')
+    sendMessage('autoPlay')
   }
   const otherGo = async () => {
     if (gobang.isFinal) return
     const { i: ii, j: jj } = otherGobang.maxGo()
     gobang.minGo(ii, jj)
-    senMessage('autoPlay')
+    sendMessage('autoPlay')
   }
   const waitTime = 500
   while (gobang.autoPlay && !gobang.isFinal) {

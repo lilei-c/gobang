@@ -120,25 +120,25 @@ export function genChilds(points, isMax, kill) {
     }
   }
 
+  // 以下直接 return 的点的逻辑是: 下了必赢, 或不下必输, 这些点不用考虑具体分数
   if (isMax) {
     // console.log({ kill, maxL5, minL5, maxL4, maxD4L3, minL4, minD4L3, maxDoubleL3, minDoubleL3 })
-    // 以下直接 return 的点的逻辑是, 下了必赢, 或不下必输
     if (maxL5.length) return maxL5
     if (minL5.length) return minL5
     if (maxL4.length) return maxL4
     if (maxD4L3.length && !minL4.length && !minD4.length) return maxD4L3
-    if (!maxD4.length) {
-      if (minL4.length) return minL4.concat(minD4) // 破坏活四不一定堵中间好, 可能堵两边更好
-      // if (minD4L3.length) return minD4L3 // minD4L3 不一定直接拦这个点, 可以单独拦4或3
+    if (minL4.length) {
+      if (maxD4.length) return minL4.concat(maxD4) //.concat(minD4) // 当对方可以活四时, 要么阻止活四, 要么自己冲四
+      else return minL4 //.concat(minD4) // 自己不能冲四, 必须阻止对方的活四 (破坏冲四不一定堵中间好, 可能堵两边更好)
     }
   } else {
     if (minL5.length) return minL5
     if (maxL5.length) return maxL5
     if (minL4.length) return minL4
     if (minD4L3.length && !maxL4.length && !maxD4.length) return minD4L3
-    if (!minD4.length) {
-      if (maxL4.length) return maxL4.concat(maxD4) // 破坏活四不一定堵中间好, 可能堵两边更好
-      // if (maxD4L3.length) return maxD4L3 // minD4L3 不一定直接拦这个点, 可以单独拦4或3
+    if (maxL4.length) {
+      if (minD4.length) return maxL4.concat(minD4) //.concat(maxD4) // 当对方可以活四时, 要么阻止活四, 要么自己冲四
+      else return maxL4 //.concat(maxD4) // 自己不能冲四, 必须阻止对方的活四 (破坏冲四不一定堵中间好, 可能堵两边更好)
     }
   }
   rst = pointsWithScore.sort((a, b) => b.score - a.score).map((x) => x.position)

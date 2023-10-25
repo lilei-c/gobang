@@ -2,7 +2,7 @@ import { MAX, MIN, WALL, EMPTY, boardLength, boardCenter } from './const'
 import { countLine, serialPointMode, Score } from './genLineScore'
 import { arrayN } from './support'
 import { Zobrist } from './zobrist'
-import { evaluate } from './evaluate'
+import { evaluate, evaluateOnlyLine } from './evaluate'
 import { genChilds } from './genChilds'
 
 const countLineMax = countLine(MAX, MIN, WALL)
@@ -18,6 +18,7 @@ export class Gobang {
     this.node2 = []
     this.node3 = []
     this.neighborNode = [] // 用来记录棋子周围是否有落子
+    this.scoreNode = arrayN(4, [])
     this.initNode()
     this.stack = []
     this.zobrist = new Zobrist({ size: boardLength })
@@ -43,6 +44,7 @@ export class Gobang {
 
   genChilds = genChilds
   evaluate = evaluate
+  evaluateOnlyLine = evaluateOnlyLine
   serialPointMode = serialPointMode
 
   maxGo() {
@@ -106,7 +108,8 @@ export class Gobang {
         this.zobrist.resetHash()
         if (+new Date() - this.startTime > this.timeLimit) break
         const score = this.minimax(depth, true, true)
-        if (score?.score >= Score.win) {
+        // 实际分数可能小于 L5, 但一定大于 0.5 倍 L5
+        if (score?.score > Score.l5 * 0.5) {
           console.warn('算杀成功 :)', score)
           this.logStats()
           console.timeEnd('thinking kill')
@@ -131,7 +134,7 @@ export class Gobang {
       return {
         score,
         depth,
-        // stack: structuredClone(this.stack)
+        // stack: structuredClone(this.stack),
       }
     }
     const orderedPoints = this.genChilds(this.getAllOptimalNextStep(), isMax, kill)
@@ -146,7 +149,7 @@ export class Gobang {
         this.put(i, j, MAX)
         // if (this.winner) {
         //   this.rollback()
-        //   return { score: Score.win, i, j }
+        //   return { score: Score.l5, i, j }
         // }
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
@@ -193,7 +196,7 @@ export class Gobang {
         this.put(i, j, MIN)
         // if (this.winner) {
         //   this.rollback()
-        //   return { score: -Score.win, i, j }
+        //   return { score: -Score.l5, i, j }
         // }
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
@@ -282,6 +285,7 @@ export class Gobang {
     this.zobrist.go(i, j, role === MAX)
     this.stack.push([i, j])
 
+    // 更新棋盘
     // 横
     this.node0[i] = this.node0[i] | (role << (2 * (14 - j)))
     // 竖
@@ -294,6 +298,8 @@ export class Gobang {
     this.updateNeighbor(i, j, true)
 
     this.updatePointScore(i, j)
+
+    this.updateScoreNode(i, j)
   }
 
   rollback(steps = 1) {
@@ -302,6 +308,7 @@ export class Gobang {
       const [i, j] = this.stack.pop()
       this.zobrist.go(i, j, this.getChess(i, j) === MAX)
 
+      // 更新棋盘
       // 横
       const move1 = 2 * (14 - j)
       this.node0[i] = (this.node0[i] | (0b11 << move1)) ^ (0b11 << move1)
@@ -316,6 +323,8 @@ export class Gobang {
       this.updateNeighbor(i, j, false)
 
       this.updatePointScore(i, j)
+
+      this.updateScoreNode(i, j)
     }
   }
 
@@ -358,6 +367,14 @@ export class Gobang {
         else this.neighborNode[i + centerI][centerJ + j] -= 1
       }
     }
+  }
+
+  // 现在是落子/回滚时更新 4 行分数, 如果记录行列, 只在最后更新下过子的地方, 是否会更快? (还需考虑回滚, 可能过于复杂)
+  updateScoreNode(i, j) {
+    this.scoreNode[0][i] = this.evaluateOnlyLine(this.node0, i)
+    this.scoreNode[1][j] = this.evaluateOnlyLine(this.node1, j)
+    this.scoreNode[2][i + j] = this.evaluateOnlyLine(this.node2, i + j)
+    this.scoreNode[3][14 + i - j] = this.evaluateOnlyLine(this.node3, 14 + i - j)
   }
 
   getChess(i, j) {

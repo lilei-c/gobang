@@ -33,8 +33,7 @@ export const Score = {
   /**/ l3: 30,
   /**/ d4: 50,
   /**/ l4: 500,
-  /**/ l5: 1000,
-  /**/ win: 10000,
+  /**/ l5: 10000, // l5 必须比 l4 大很多, 这样当获得较大分数时, 可直接断定获胜
 }
 
 console.log('getPoinScoretMode')
