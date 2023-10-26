@@ -11,11 +11,8 @@ import { useEffect } from 'react'
 import Worker from './bot/worker.js?worker'
 import { Music } from './comps/music/music'
 
-let gobang //= new Gobang()
+let gobang
 let worker = new Worker()
-// 方便调试
-// test('console.log(this.node)')
-window.test = (x) => worker.postMessage({ type: 'test', data: x })
 
 const Square = ({ position, value, onClick, isLastChess, isMarkPoint, isWinnerPoint }) => {
   const stackIndex = gobang.stack.findIndex((x) => x[0] === position[0] && x[1] === position[1])

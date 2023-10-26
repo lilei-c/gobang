@@ -111,7 +111,7 @@ export class Gobang {
         // 实际分数可能小于 L5, 但一定大于 0.5 倍 L5
         if (score?.score > Score.l5 * 0.5) {
           console.warn('算杀成功 :)', score)
-          this.logStats()
+          // this.logStats()
           console.timeEnd('thinking kill')
           return score
         }
@@ -129,7 +129,8 @@ export class Gobang {
   }
 
   minimax(depth, isMax = true, kill = false, alpha = -Infinity, beta = Infinity) {
-    if (this.isFinal || depth === 0) {
+    if (this.winner) return { score: isMax ? -Score.l5 : Score.l5 }
+    if (this.isBoardFull || depth === 0) {
       const score = this.evaluate(kill)
       return {
         score,
@@ -147,10 +148,6 @@ export class Gobang {
         if (+new Date() - this.startTime > this.timeLimit) break
         const [i, j] = childPosition
         this.put(i, j, MAX)
-        // if (this.winner) {
-        //   this.rollback()
-        //   return { score: Score.l5, i, j }
-        // }
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
         let childStack
@@ -194,10 +191,6 @@ export class Gobang {
         }
         const [i, j] = childPosition
         this.put(i, j, MIN)
-        // if (this.winner) {
-        //   this.rollback()
-        //   return { score: -Score.l5, i, j }
-        // }
         this.enableStats && this.stats.abCut.eva++
         let childVal = this.zobrist.get()
         let childStack
@@ -470,9 +463,10 @@ export class Gobang {
           this.maxPointsScore[i][j] = [0, 0, 0, 0]
           this.minPointsScore[i][j] = [0, 0, 0, 0]
         } else {
-          const chessInFourDirection = this.getChessInFourDirection(i, j, direction)
-          this.maxPointsScore[i][j][direction] = this.serialPointMode[countLineMax(chessInFourDirection)] || 0
-          this.minPointsScore[i][j][direction] = this.serialPointMode[countLineMin(chessInFourDirection)] || 0
+          // 一个方向上的点, 只需更新对应方向的分数
+          const chessInOneDirection = this.getChessInFourDirection(i, j, direction)
+          this.maxPointsScore[i][j][direction] = this.serialPointMode[countLineMax(chessInOneDirection)] || 0
+          this.minPointsScore[i][j][direction] = this.serialPointMode[countLineMin(chessInOneDirection)] || 0
         }
       }
     }
@@ -493,10 +487,6 @@ export class Gobang {
     }
   }
 
-  test(data) {
-    console.log(Function(data).call(this))
-  }
-
   get winner() {
     if (this.stack.length < 7) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
@@ -510,17 +500,23 @@ export class Gobang {
     for (let i = 0; i < 4; i++) {
       let count = 0
       const chesses = chessInFourDirection[i]
+      let beforeOnePoint
       for (let j = 0; j < chesses.length; j++) {
         if (chesses[j] === mayBeWinner) count++
-        else count = 0
+        else {
+          count = 0
+          beforeOnePoint = chesses[j]
+        }
         if (count === 5) return mayBeWinner
+        if (count === 4 && beforeOnePoint === EMPTY && j + 1 < chesses.length && chesses[j + 1] === EMPTY)
+          return mayBeWinner
       }
     }
     return null
   }
 
+  // 可改为在 winner 函数中获取(有 winner 时), 不改也行
   get winnerPositions() {
-    if (!this.winner) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
     const mayBeWinner = this.getChess(lastI, lastJ)
     const chessInFourDirection = this.getPositionsInFourDirection(lastI, lastJ)
@@ -528,23 +524,33 @@ export class Gobang {
       const positions = chessInFourDirection[a]
       let count = 0
       let rst = []
+      let beforeOneChess
       for (let b = 0; b < positions.length; b++) {
         const [i, j] = positions[b]
-        if (this.getChess(i, j) === mayBeWinner) {
+        const chess = this.getChess(i, j)
+        if (chess === mayBeWinner) {
           count++
           rst.push([i, j])
         } else {
           count = 0
           rst = []
+          beforeOneChess = chess
         }
         if (count === 5) return rst
+        if (
+          count === 4 &&
+          beforeOneChess === EMPTY &&
+          b + 1 < positions.length &&
+          this.getChess(positions[b + 1][0], positions[b + 1][1]) === EMPTY
+        )
+          return rst
       }
     }
     return null
   }
 
   get isFinal() {
-    return !!this.winner || this.isBoardFull
+    return this.winner || this.isBoardFull
   }
 
   get isBoardFull() {

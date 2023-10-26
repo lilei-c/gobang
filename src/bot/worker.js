@@ -29,9 +29,6 @@ onmessage = async function (e) {
     case 'reStart':
       res = gobang.init({})
       break
-    case 'test':
-      res = gobang.test(data)
-      break
     default:
       break
   }
@@ -48,7 +45,7 @@ const sendMessage = (type, data) =>
       stack: gobang.stack,
       firstHand: gobang.firstHand,
       lastChessPosition: gobang.lastChessPosition,
-      winnerPositions: gobang.winnerPositions,
+      winnerPositions: gobang.winner ? gobang.winnerPositions : null,
       isDraw: gobang.isDraw,
       winner: gobang.winner,
       isFinal: gobang.isFinal,

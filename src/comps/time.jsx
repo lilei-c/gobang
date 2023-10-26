@@ -6,8 +6,8 @@ export default () => {
 
   useEffect(() => {
     const id = setInterval(() => {
-      timeX((x) => x + 0.2)
-    }, 200)
+      timeX((x) => x + 1)
+    }, 1000)
     return () => clearInterval(id)
   }, [])
   return <div className="">{time.toFixed(1)}</div>
