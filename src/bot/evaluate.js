@@ -199,8 +199,6 @@ export function evaluateOnlyLine(node, lineIndex, log) {
     Score.l2 * minL2 +
     Score.d2 * minD2 +
     Score.l1 * minD2
-  // // 后手时, 加强防守
-  // let score = maxScore * this.attackFactor - minScore * (this.firstHand === MIN ? this.defenseFactor : 1)
   let score = maxScore - minScore
   return score
 }

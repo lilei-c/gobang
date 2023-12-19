@@ -1,7 +1,10 @@
 import { Gobang } from './gobang'
+import { GobangSimple } from './gobang_simple'
+import { GobangMCTS } from './gobang_mcts'
 import { Chessboard } from './otherFivechess'
 import { wait } from './support'
 let gobang = new Gobang()
+console.log({ GobangMCTS })
 
 // 同步操作统一在函数末尾发送消息
 // 异步操作在 switch 分支发送消息并 return
@@ -27,7 +30,7 @@ onmessage = async function (e) {
       res = gobang.minRepent()
       break
     case 'reStart':
-      res = gobang.init({})
+      res = gobang.init()
       break
     default:
       break
@@ -83,12 +86,12 @@ const autoPlayWithOtherAI = async () => {
 }
 
 const autoPlayWithSelf = async () => {
-  const otherGobang = new Gobang({ firstHand: Gobang.MIN, seekDepth: 2, defenseFactor: 4 })
+  // const otherGobang = new GobangSimple({ firstHand: Gobang.MIN })
+  const otherGobang = new GobangMCTS({ firstHand: Gobang.MIN })
+
   gobang.genLimit = 30
   gobang.seekDepth = 8
-  otherGobang.seekDepth = 4
-  otherGobang.genLimit = 60
-  otherGobang.defenseFactor = 1
+  gobang.timeLimit = 20
   const gobangGo = async () => {
     if (gobang.isFinal) return
     const { i, j } = gobang.maxGo()
@@ -97,11 +100,11 @@ const autoPlayWithSelf = async () => {
   }
   const otherGo = async () => {
     if (gobang.isFinal) return
-    const { i: ii, j: jj } = otherGobang.maxGo()
-    gobang.minGo(ii, jj)
+    const { i, j } = otherGobang.maxGo()
+    gobang.minGo(i, j)
     sendMessage('autoPlay')
   }
-  const waitTime = 500
+  const waitTime = 100
   while (gobang.autoPlay && !gobang.isFinal) {
     await gobangGo()
     await wait(waitTime)

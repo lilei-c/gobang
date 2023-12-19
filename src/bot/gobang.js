@@ -12,7 +12,8 @@ export class Gobang {
   constructor(props) {
     this.init({ ...props })
   }
-  init({ firstHand, autoPlay, enableStats, attackFactor, defenseFactor }) {
+
+  init({ firstHand, autoPlay, enableStats }) {
     this.node0 = []
     this.node1 = []
     this.node2 = []
@@ -33,10 +34,9 @@ export class Gobang {
     this.seekDepth = 8
     this.seekKillDepth = 21 // 算杀只需要奇数步, 因为只判断最后一步我方落子是否取胜
     this.autoPlay = autoPlay || false
-    this.attackFactor = attackFactor || 1
-    this.defenseFactor = defenseFactor || 1
     this.timeLimit = 3000
   }
+
   static MAX = MAX
   static MIN = MIN
   static EMPTY = EMPTY
@@ -491,15 +491,9 @@ export class Gobang {
     if (this.stack.length < 7) return null
     const [lastI, lastJ] = this.stack[this.stack.length - 1]
     const mayBeWinner = this.getChess(lastI, lastJ)
-    const chessInFourDirection = [
-      this.getChessInFourDirection(lastI, lastJ, 0),
-      this.getChessInFourDirection(lastI, lastJ, 1),
-      this.getChessInFourDirection(lastI, lastJ, 2),
-      this.getChessInFourDirection(lastI, lastJ, 3),
-    ]
     for (let i = 0; i < 4; i++) {
       let count = 0
-      const chesses = chessInFourDirection[i]
+      const chesses = this.getChessInFourDirection(lastI, lastJ, i)
       let beforeOnePoint
       for (let j = 0; j < chesses.length; j++) {
         if (chesses[j] === mayBeWinner) count++
@@ -508,8 +502,8 @@ export class Gobang {
           beforeOnePoint = chesses[j]
         }
         if (count === 5) return mayBeWinner
-        if (count === 4 && beforeOnePoint === EMPTY && j + 1 < chesses.length && chesses[j + 1] === EMPTY)
-          return mayBeWinner
+        // if (count === 4 && beforeOnePoint === EMPTY && j + 1 < chesses.length && chesses[j + 1] === EMPTY)
+        //   return mayBeWinner
       }
     }
     return null
@@ -537,13 +531,13 @@ export class Gobang {
           beforeOneChess = chess
         }
         if (count === 5) return rst
-        if (
-          count === 4 &&
-          beforeOneChess === EMPTY &&
-          b + 1 < positions.length &&
-          this.getChess(positions[b + 1][0], positions[b + 1][1]) === EMPTY
-        )
-          return rst
+        // if (
+        //   count === 4 &&
+        //   beforeOneChess === EMPTY &&
+        //   b + 1 < positions.length &&
+        //   this.getChess(positions[b + 1][0], positions[b + 1][1]) === EMPTY
+        // )
+        //   return rst
       }
     }
     return null

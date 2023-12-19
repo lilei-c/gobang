@@ -84,8 +84,7 @@ export function genChilds(points, isMax, kill) {
     }
 
     // 无论 max 还是 min, 都是考虑 maxScore + minScore, 原理是: 无论我方还是对方能在此获得较大分数, 都应抢占这个地方
-    // pointsWithScore.push({ position: [i, j], score: maxScore + minScore })
-    pointsWithScore.push({ position: [i, j], score: maxScore * this.attackFactor + minScore * this.defenseFactor })
+    pointsWithScore.push({ position: [i, j], score: maxScore + minScore })
   }
   let rst
   // if (maxL5.length) {

@@ -3,7 +3,7 @@ import { evaluate } from '../evaluate'
 import { Gobang } from '../gobang'
 import { stack } from './stacks/evaluate'
 
-const gobang = new Gobang({ attackFactor: 1, defenseFactor: 1 })
+const gobang = new Gobang()
 
 gobang.restoreStack(stack)
 const score1 = evaluate.call(gobang)
