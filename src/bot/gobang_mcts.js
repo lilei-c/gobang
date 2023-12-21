@@ -2,19 +2,20 @@ const EMPTY = 0
 const MAX = 1
 const MIN = 2
 const boardLength = 15
-const boardCenter = 7
-const timeLimit = 3000
+const timeLimit = 10000
 
 export class GobangMCTS {
-  constructor({ firstHand }) {
+  constructor({ firstHand, notInitSteps }) {
     this.node0 = Array(boardLength)
-      .fill()
-      .map((_) => Array(boardLength).fill(EMPTY))
-    this.neighborNode = Array(boardLength)
       .fill()
       .map((_) => Array(boardLength).fill(EMPTY))
     this.stack = []
     this.firstHand = firstHand || MIN
+
+    if (!notInitSteps)
+      this.steps = Array(boardLength ** 2)
+        .fill()
+        .map((_, i) => i)
 
     this.resetCount()
   }
@@ -23,7 +24,8 @@ export class GobangMCTS {
     this.win = 0
     this.loss = 0
     this.count = 0
-    this.logCounts = 0
+    this.mctsCount = 0
+    this.mctsNodeCount = 0
   }
 
   maxGo() {
@@ -35,18 +37,20 @@ export class GobangMCTS {
   }
 
   mtcs() {
-    console.error(this.logCounts)
+    console.error(this.mctsCount, this.mctsNodeCount)
     this.resetCount()
     const startTime = +new Date()
     const allLegalPoints = this.getAllLegalNextStep()
     // 生成子节点
-    const childs = allLegalPoints.map((x) => {
-      let child = new GobangMCTS({ firstHand: this.firstHand })
-      child.restoreStack([...this.stack, x])
+    let childs = allLegalPoints.map((x) => {
+      let child = new GobangMCTS({ firstHand: this.firstHand, notInitSteps: true })
+      // child.restoreStack([...this.stack, x])
+      child.steps = p.steps.filter((m) => m !== x)
+      child.restoreStack([...this.stack, [(x / boardLength) >> 0, x % boardLength]])
       child.parent = this
       return child
     })
-    console.warn({ childs })
+    // console.warn({ childs })
     while (+new Date() - startTime < timeLimit) {
       //随机位置
       const p = Math.floor(Math.random() * childs.length)
@@ -58,6 +62,35 @@ export class GobangMCTS {
     const selectChild = childs[0]
     const [i, j] = selectChild.stack[selectChild.stack.length - 1]
     return { i, j }
+  }
+
+  mtcs2(p) {
+    // 生成子节点
+    if (!p.childs) {
+      const allLegalPoints = p.getAllLegalNextStep()
+      let childs = allLegalPoints.map((x) => {
+        let child = new GobangMCTS({ firstHand: this.firstHand, notInitSteps: true })
+        child.steps = p.steps.filter((m) => m !== x)
+        child.restoreStack([...p.stack, [(x / boardLength) >> 0, x % boardLength]])
+        child.parent = p
+        this.mctsNodeCount++
+        return child
+      })
+      p.childs = childs
+    }
+
+    // 选择一个子节点
+    const rand = Math.floor(Math.random() * p.childs.length)
+    const child = p.childs[rand]
+    // 如果是终局, 更新统计信息
+    const winner = child.winner
+    if (winner) {
+      child.updateScore(winner === MAX, winner !== MAX)
+      this.mctsCount++
+    } else if (child.isBoardFull) {
+      child.updateScore(false, false)
+      this.mctsCount++
+    } else this.mtcs2(child)
   }
 
   updateScore(win, loss) {
@@ -73,49 +106,8 @@ export class GobangMCTS {
     this.ucb_value = this.Q + this.U
   }
 
-  mtcs2(p) {
-    // 生成子节点
-    if (!p.childs) {
-      const allLegalPoints = p.getAllLegalNextStep()
-      let childs = allLegalPoints.map((x) => {
-        let child = new GobangMCTS({ firstHand: this.firstHand })
-        child.restoreStack([...p.stack, x])
-        child.parent = p
-        return child
-      })
-      p.childs = childs
-    }
-
-    // 选择一个子节点
-    const rand = Math.floor(Math.random() * p.childs.length)
-    const child = p.childs[rand]
-    // 如果是终局, 更新统计信息
-    const winner = child.winner
-    if (winner) {
-      child.updateScore(winner === MAX, winner !== MAX)
-      this.logCounts++
-    } else if (child.isBoardFull) {
-      child.updateScore(false, false)
-      this.logCounts++
-    } else this.mtcs2(child)
-  }
-
   getAllLegalNextStep() {
-    if (this.stack.length === 0) return [[boardCenter, boardCenter]]
-    // if (this.stack.length === 1) {
-    //   if (this.node0[boardCenter][boardCenter] === EMPTY) return [[boardCenter, boardCenter]]
-    //   const i = boardCenter + (Math.random() > 0.5 ? 1 : -1)
-    //   const j = boardCenter + (Math.random() > 0.5 ? 1 : -1)
-    //   return [[i, j]]
-    // }
-    //
-    let rst = []
-    for (let i = 0; i < boardLength; i++) {
-      for (let j = 0; j < boardLength; j++) {
-        if (this.neighborNode[i][j] > 0) rst.push([i, j])
-      }
-    }
-    return rst
+    return this.steps
   }
 
   minGo(i, j) {
@@ -126,19 +118,7 @@ export class GobangMCTS {
   put(i, j, role) {
     this.stack.push([i, j])
     this.node0[i][j] = role
-    this.updateNeighbor(i, j)
-  }
-
-  updateNeighbor(centerI, centerJ) {
-    this.neighborNode[centerI][centerJ] -= 64
-    const seekStep = 2
-    for (let i = -seekStep; i <= seekStep; i++) {
-      if (i + centerI < 0 || i + centerI >= boardLength) continue
-      for (let j = -seekStep; j <= seekStep; j++) {
-        if (j + centerJ < 0 || j + centerJ >= boardLength || (i === 0 && j === 0)) continue
-        this.neighborNode[i + centerI][centerJ + j] += 1
-      }
-    }
+    this.steps = this.steps.filter((x) => x !== i * boardLength + j)
   }
 
   restoreStack(stack) {
